@@ -36,6 +36,52 @@ The effort tier should respect the running model's output capacity:
 
 If the current model cannot sustain the selected tier's output requirements, automatically downgrade to the next lower tier. A completed Standard-tier task is worth more than a stalled Deep-tier task.
 
+## Local Model Mode
+
+When running on a local model (oMLX, Ollama, or any model ≤30B parameters), the Algorithm MUST use this compressed format. The full 7-phase ceremony exceeds local model output capacity.
+
+### Compressed Algorithm (Local Models Only)
+
+**Replace the full 7 phases with this 3-step flow:**
+
+#### Step 1: OBSERVE (5 sentences max)
+```
+━━━ OBSERVE ━━━
+Task: [one sentence]
+Deliverables: [numbered list, one line each]
+ISC: [max 8 criteria, one line each]
+First delegation: [agent name + brief description]
+```
+
+Do NOT produce a PRD table. Do NOT analyze implicit/explicit wants. Just identify deliverables, write ISC, and move to delegation.
+
+#### Step 2: DELEGATE
+Immediately delegate the first task. Do not wait for user input. Do not enter THINK or PLAN phases.
+
+```
+━━━ DELEGATE T1 ━━━
+Agent: [agent name]
+Task: [description]
+Output: [file path]
+ISC: [1-3 criteria]
+```
+
+#### Step 3: VERIFY → NEXT
+After each subagent completes, check the output file, verify ISC, update the task list, and delegate the next task. Repeat until done.
+
+```
+━━━ VERIFY T1 ━━━
+File: [path] — [exists/missing]
+ISC-1: [pass/fail]
+ISC-2: [pass/fail]
+→ DELEGATE T2
+```
+
+### When to Use Local vs Full Mode
+- **Local mode**: Any model with "omlx/", "ollama/", or "local/" in the model ID
+- **Full mode**: API models (anthropic/, openai/, google/)
+- **When in doubt**: Use local mode. A completed task beats a stalled one.
+
 ## The 7 Phases
 
 ### Phase 1: OBSERVE
