@@ -58,5 +58,16 @@
   "watcher": {
     "ignore": ["**/node_modules/**", "**/dist/**", "**/.git/**", "**/vendor/**", "**/*.log", "**/coverage/**"]
   },
+  "agent": {
+    "pai-architect": { "model": "omlx/gemma-4-31b-it-4bit" },
+    "pai-engineer": { "model": "omlx/gemma-4-31b-it-4bit" },
+    "pai-designer": { "model": "omlx/gemma-4-26b-a4b-it-4bit" },
+    "pai-qa": { "model": "omlx/gemma-4-26b-a4b-it-4bit" },
+    "pai-pentester": { "model": "omlx/gemma-4-26b-a4b-it-4bit" },
+    "pai-artist": { "model": "omlx/gemma-4-26b-a4b-it-4bit" },
+    "pai-researcher": { "model": "omlx/gemma-4-26b-a4b-it-4bit" },
+    "pai-sre": { "model": "omlx/gemma-4-26b-a4b-it-4bit" },
+    "pai-pm": { "model": "omlx/gemma-4-26b-a4b-it-4bit" }
+  },
   "instructions": ["AGENTS.md"]
 }

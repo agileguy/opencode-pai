@@ -10,11 +10,17 @@ fail() { echo "FAIL: $1"; FAIL=$((FAIL+1)); }
 # Agent definitions directory — inside container this maps to ~/.config/opencode/agents/
 AGENTS_DIR="${AGENTS_DIR:-$HOME/.config/opencode/agents}"
 
-# Phase 1 agents — extend this array as new agents are added in Phase 2+
+# All 9 agents — Phase 1 (architect, engineer, researcher) + Phase 2 additions
 REQUIRED_AGENTS=(
     "pai-architect"
     "pai-engineer"
     "pai-researcher"
+    "pai-designer"
+    "pai-qa"
+    "pai-pentester"
+    "pai-artist"
+    "pai-sre"
+    "pai-pm"
 )
 
 for AGENT in "${REQUIRED_AGENTS[@]}"; do
