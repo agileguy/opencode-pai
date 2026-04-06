@@ -9,9 +9,9 @@ import type { Plugin } from "@opencode-ai/plugin"
 export const PAITierEnforcer: Plugin = async (ctx) => {
   const LOCAL_MODEL_PATTERNS = ["omlx/", "ollama/", "mlx-", "gguf", "local/"]
 
-  function isLocalModel(model: string | undefined): boolean {
+  function isLocalModel(model: unknown): boolean {
     if (!model) return true // default to local if unknown
-    const m = model.toLowerCase()
+    const m = String(typeof model === "object" && model !== null && "id" in model ? (model as any).id : model).toLowerCase()
     return LOCAL_MODEL_PATTERNS.some(p => m.includes(p))
   }
 
