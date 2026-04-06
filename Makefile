@@ -20,7 +20,8 @@ test-quick:
 	docker compose exec opencode-pai bash -c '\
 		bash /workspace/repos/opencode-pai/tests/connectivity.sh && \
 		bash /workspace/repos/opencode-pai/tests/agent-defs.sh && \
-		bash /workspace/repos/opencode-pai/tests/tool-access.sh'
+		bash /workspace/repos/opencode-pai/tests/tool-access.sh && \
+		bash /workspace/repos/opencode-pai/tests/skill-loading.sh'
 
 test-e2e:
 	docker compose exec opencode-pai bash -c '\
