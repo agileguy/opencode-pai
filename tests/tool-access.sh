@@ -59,12 +59,32 @@ else
     fail "gh CLI available"
 fi
 
-# Test 7: /workspace directory writable
+# Test 7: tmux available
+if command -v tmux &>/dev/null; then
+    TMUX_VERSION=$(tmux -V 2>&1)
+    pass "tmux available (${TMUX_VERSION})"
+else
+    fail "tmux available"
+fi
+
+# Test 8: /workspace directory writable
 if [ -d /workspace ] && touch /workspace/.write-test 2>/dev/null; then
     rm -f /workspace/.write-test
     pass "/workspace directory writable"
 else
     fail "/workspace directory writable"
+fi
+
+# Test 9: ~/repos mounted at /workspace/repos
+if [ -d /workspace/repos ]; then
+    REPO_COUNT=$(ls -1 /workspace/repos/ 2>/dev/null | wc -l | tr -d ' ')
+    if [ "$REPO_COUNT" -gt 0 ]; then
+        pass "~/repos mounted at /workspace/repos (${REPO_COUNT} repos)"
+    else
+        fail "~/repos mounted but empty"
+    fi
+else
+    fail "~/repos not mounted at /workspace/repos"
 fi
 
 echo ""
