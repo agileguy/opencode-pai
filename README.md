@@ -1,6 +1,6 @@
 # PAI-OpenCode
 
-Dockerized OpenCode environment connected to host oMLX inference server for local AI-powered development.
+PAI (Personal AI Infrastructure) running on OpenCode — a fully Dockerized, multi-agent development environment powered by local oMLX inference. Nine specialized agents, custom skills, plugins, memory, and the PAI Algorithm methodology, all running cost-free on local hardware.
 
 ## Prerequisites
 
@@ -19,6 +19,65 @@ make up
 make shell
 ```
 
+Once inside the container, OpenCode launches with all PAI agents, skills, and plugins pre-configured.
+
+## Architecture
+
+### Agents
+
+Nine specialized agents, each with defined roles and model routing:
+
+| Agent | Model | Role |
+|-------|-------|------|
+| pai-architect | gemma-4-31b | System design, architectural decisions |
+| pai-engineer | gemma-4-31b | Implementation, TDD, code quality |
+| pai-designer | gemma-4-26b | UI/UX design and review |
+| pai-qa | gemma-4-26b | Testing and validation |
+| pai-pentester | gemma-4-26b | Security assessment |
+| pai-artist | gemma-4-26b | Visual content and image prompts |
+| pai-researcher | gemma-4-26b | Research synthesis |
+| pai-sre | gemma-4-26b | Infrastructure operations |
+| pai-pm | gemma-4-26b | Project orchestration |
+
+### Skills
+
+10 priority skills ported from PAI: research, blogging, content analysis, media, security, thinking, investigation, scraping, RAG, and utilities.
+
+### Plugins
+
+- **Context Loader** — Injects PAI context (user profile, DA identity, steering rules) into every session
+- **Memory** — PRD sync and rating signal capture
+
+### Memory
+
+Persistent memory layer with learning signals, research cache, security logs, and state tracking.
+
+### PAI Algorithm
+
+The 7-phase PAI Algorithm skill (ISC decomposition, PRD format, effort tiers) provides structured methodology for complex work.
+
+## Testing
+
+```bash
+make test-quick    # Structural tests (no model needed)
+make test-e2e      # End-to-end tests (requires oMLX)
+make test          # All tests
+```
+
+Structural tests validate agent definitions, skill loading, and plugin hooks. E2E tests verify model connectivity and routing.
+
+## ACP Integration
+
+Connect PAI agents to Zed, JetBrains, or Neovim via the Agent Client Protocol. See [config/acp/README.md](config/acp/README.md).
+
+## Headless Server Mode
+
+Run PAI-OpenCode as a headless server for programmatic control and batch processing. See [config/server/README.md](config/server/README.md).
+
+## Cost Routing
+
+Assign different models to different agents — run 100% local for free, or selectively upgrade agents to cloud models. See [docs/cost-routing.md](docs/cost-routing.md).
+
 ## Available Commands
 
 | Command | Description |
@@ -28,16 +87,41 @@ make shell
 | `make down` | Stop the container |
 | `make shell` | Open a shell in the container |
 | `make rebuild` | Full rebuild (no cache) |
-| `make test-quick` | Validate tool versions |
+| `make test-quick` | Structural validation tests |
 | `make test` | Run full test suite |
 | `make test-e2e` | Run end-to-end tests |
 | `make logs` | Tail container logs |
 
-## Architecture
+## Directory Structure
 
-The container connects to the host's oMLX server via `host.docker.internal:8000`. OpenCode is configured with custom oMLX provider definitions in `config/opencode.json`.
+```
+opencode-pai/
+  config/
+    acp/              # ACP editor integration docs
+    agents/           # Agent definition files (9 agents)
+    opencode.json     # OpenCode configuration + model routing
+    pai/
+      context/        # DA identity, user profile, steering rules
+      history/        # Session history
+      memory/         # Learning signals, research, state
+    plugins/          # Context loader + memory plugins
+    server/           # Headless server mode docs
+    skills/           # 10 priority skills
+    AGENTS.md         # PAI behavioral rules
+  docs/
+    cost-routing.md   # Multi-model cost routing guide
+  tests/              # Test harness (structural + e2e)
+  .github/workflows/  # CI validation
+  docker-compose.yml
+  Dockerfile
+  Makefile
+  CHANGELOG.md
+```
 
-Host volumes mounted:
+## Infrastructure
+
+The container connects to the host oMLX server via `host.docker.internal:8000`. Host volumes mounted:
+
 - `~/repos` -> `/workspace/repos` (your code)
 - `~/.ssh` -> read-only SSH keys
 - `~/.gitconfig` -> git configuration
