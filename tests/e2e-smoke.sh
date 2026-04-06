@@ -5,8 +5,8 @@ PASS=0
 FAIL=0
 E2E_TIMEOUT="${E2E_TIMEOUT:-120}"
 
-pass() { echo "PASS: $1"; ((PASS++)); }
-fail() { echo "FAIL: $1"; ((FAIL++)); }
+pass() { echo "PASS: $1"; PASS=$((PASS+1)); }
+fail() { echo "FAIL: $1"; FAIL=$((FAIL+1)); }
 
 # Test 1: opencode run — basic prompt produces PONG
 echo "Running: opencode run (PONG test, timeout ${E2E_TIMEOUT}s)..."

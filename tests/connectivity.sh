@@ -8,8 +8,8 @@ OMLX_PORT="${OMLX_PORT:-8000}"
 LIGHTRAG_HOST="${LIGHTRAG_HOST:-host.docker.internal}"
 LIGHTRAG_PORT="${LIGHTRAG_PORT:-9621}"
 
-pass() { echo "PASS: $1"; ((PASS++)); }
-fail() { echo "FAIL: $1"; ((FAIL++)); }
+pass() { echo "PASS: $1"; PASS=$((PASS+1)); }
+fail() { echo "FAIL: $1"; FAIL=$((FAIL+1)); }
 
 # Test 1: host.docker.internal DNS resolves
 if getent hosts "$OMLX_HOST" &>/dev/null || ping -c1 -W2 "$OMLX_HOST" &>/dev/null; then

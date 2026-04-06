@@ -8,8 +8,8 @@ OMLX_PORT="${OMLX_PORT:-8000}"
 BASE_URL="http://${OMLX_HOST}:${OMLX_PORT}/v1"
 AUTH_HEADER="Authorization: Bearer ${OMLX_API_KEY:-}"
 
-pass() { echo "PASS: $1"; ((PASS++)); }
-fail() { echo "FAIL: $1"; ((FAIL++)); }
+pass() { echo "PASS: $1"; PASS=$((PASS+1)); }
+fail() { echo "FAIL: $1"; FAIL=$((FAIL+1)); }
 
 REQUIRED_MODELS=(
     "gemma-4-26b-a4b-it-4bit"

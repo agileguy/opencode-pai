@@ -4,8 +4,8 @@ set -euo pipefail
 PASS=0
 FAIL=0
 
-pass() { echo "PASS: $1"; ((PASS++)); }
-fail() { echo "FAIL: $1"; ((FAIL++)); }
+pass() { echo "PASS: $1"; PASS=$((PASS+1)); }
+fail() { echo "FAIL: $1"; FAIL=$((FAIL+1)); }
 
 # Agent definitions directory — inside container this maps to ~/.config/opencode/agents/
 AGENTS_DIR="${AGENTS_DIR:-$HOME/.config/opencode/agents}"

@@ -18,33 +18,33 @@ rebuild: down
 
 test-quick:
 	docker compose exec opencode-pai bash -c '\
-		bash tests/connectivity.sh && \
-		bash tests/agent-defs.sh && \
-		bash tests/tool-access.sh'
+		bash /workspace/repos/opencode-pai/tests/connectivity.sh && \
+		bash /workspace/repos/opencode-pai/tests/agent-defs.sh && \
+		bash /workspace/repos/opencode-pai/tests/tool-access.sh'
 
 test-e2e:
 	docker compose exec opencode-pai bash -c '\
-		bash tests/model-routing.sh && \
-		bash tests/e2e-smoke.sh'
+		bash /workspace/repos/opencode-pai/tests/model-routing.sh && \
+		bash /workspace/repos/opencode-pai/tests/e2e-smoke.sh'
 
 test: test-quick test-e2e
 
 test-all:
 	docker compose exec opencode-pai bash -c '\
-		bash tests/connectivity.sh && \
-		bash tests/agent-defs.sh && \
-		bash tests/tool-access.sh && \
-		bash tests/model-routing.sh && \
-		bash tests/e2e-smoke.sh'
+		bash /workspace/repos/opencode-pai/tests/connectivity.sh && \
+		bash /workspace/repos/opencode-pai/tests/agent-defs.sh && \
+		bash /workspace/repos/opencode-pai/tests/tool-access.sh && \
+		bash /workspace/repos/opencode-pai/tests/model-routing.sh && \
+		bash /workspace/repos/opencode-pai/tests/e2e-smoke.sh'
 
 test-tmux:
 	docker compose exec opencode-pai bash -c '\
 		if command -v tmux &>/dev/null; then \
-			tmux new-session -d -s tests "bash tests/connectivity.sh && bash tests/agent-defs.sh && bash tests/tool-access.sh && bash tests/model-routing.sh && bash tests/e2e-smoke.sh; read" && \
+			tmux new-session -d -s tests "bash /workspace/repos/opencode-pai/tests/connectivity.sh && bash /workspace/repos/opencode-pai/tests/agent-defs.sh && bash /workspace/repos/opencode-pai/tests/tool-access.sh && bash /workspace/repos/opencode-pai/tests/model-routing.sh && bash /workspace/repos/opencode-pai/tests/e2e-smoke.sh; read" && \
 			tmux attach -t tests; \
 		else \
 			echo "tmux not available, running inline"; \
-			bash tests/connectivity.sh && bash tests/agent-defs.sh && bash tests/tool-access.sh && bash tests/model-routing.sh && bash tests/e2e-smoke.sh; \
+			bash /workspace/repos/opencode-pai/tests/connectivity.sh && bash /workspace/repos/opencode-pai/tests/agent-defs.sh && bash /workspace/repos/opencode-pai/tests/tool-access.sh && bash /workspace/repos/opencode-pai/tests/model-routing.sh && bash /workspace/repos/opencode-pai/tests/e2e-smoke.sh; \
 		fi'
 
 logs:

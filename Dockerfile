@@ -29,39 +29,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN ln -sf "$(which fdfind)" /usr/local/bin/fd \
     && ln -sf "$(which batcat)" /usr/local/bin/bat
 
-# Detect architecture for multi-arch installs
-ARG TARGETARCH
-RUN ARCH=$(dpkg --print-architecture) && \
-    # git-delta 0.18.2
-    if [ "$ARCH" = "arm64" ]; then \
-        DELTA_ARCH="aarch64"; \
-    else \
-        DELTA_ARCH="x86_64"; \
-    fi && \
-    curl -fsSL "https://github.com/dandavison/delta/releases/download/0.18.2/delta-0.18.2-${DELTA_ARCH}-unknown-linux-gnu.tar.gz" \
-        | tar xz -C /tmp && \
-    mv /tmp/delta-0.18.2-${DELTA_ARCH}-unknown-linux-gnu/delta /usr/local/bin/delta && \
-    rm -rf /tmp/delta-* && \
-    # glow 2.0.0
-    if [ "$ARCH" = "arm64" ]; then \
-        GLOW_ARCH="arm64"; \
-    else \
-        GLOW_ARCH="x86_64"; \
-    fi && \
-    curl -fsSL "https://github.com/charmbracelet/glow/releases/download/v2.0.0/glow_2.0.0_Linux_${GLOW_ARCH}.tar.gz" \
-        | tar xz -C /tmp && \
-    mv /tmp/glow /usr/local/bin/glow && \
-    rm -rf /tmp/glow* && \
-    # GitHub CLI 2.74.0
-    if [ "$ARCH" = "arm64" ]; then \
-        GH_ARCH="arm64"; \
-    else \
-        GH_ARCH="amd64"; \
-    fi && \
-    curl -fsSL "https://github.com/cli/cli/releases/download/v2.74.0/gh_2.74.0_linux_${GH_ARCH}.tar.gz" \
-        | tar xz -C /tmp && \
-    mv /tmp/gh_2.74.0_linux_${GH_ARCH}/bin/gh /usr/local/bin/gh && \
-    rm -rf /tmp/gh_*
+# git-delta, glow, and GitHub CLI (not in Ubuntu apt repos)
+RUN ARCH=$(dpkg --print-architecture) \
+  && DELTA_VERSION=0.18.2 \
+  && if [ "$ARCH" = "arm64" ]; then DELTA_ARCH=aarch64; GLOW_ARCH=arm64; else DELTA_ARCH=x86_64; GLOW_ARCH=x86_64; fi \
+  && curl -fsSL "https://github.com/dandavison/delta/releases/download/${DELTA_VERSION}/delta-${DELTA_VERSION}-${DELTA_ARCH}-unknown-linux-gnu.tar.gz" \
+    | tar xz --strip-components=1 -C /usr/local/bin "delta-${DELTA_VERSION}-${DELTA_ARCH}-unknown-linux-gnu/delta" \
+  && curl -fsSL "https://github.com/charmbracelet/glow/releases/download/v2.0.0/glow_2.0.0_Linux_${GLOW_ARCH}.tar.gz" \
+    | tar xz --strip-components=1 -C /usr/local/bin "glow_2.0.0_Linux_${GLOW_ARCH}/glow" \
+  && GH_VERSION=2.74.0 \
+  && curl -fsSL "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_linux_${GLOW_ARCH}.tar.gz" \
+    | tar xz --strip-components=1 -C /usr/local
 
 # Node.js 22.x via NodeSource
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \

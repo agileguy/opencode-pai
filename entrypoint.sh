@@ -1,6 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 
+# Fix OpenCode data directory ownership (named volume may be root-owned)
+sudo chown -R developer:developer /home/developer/.local/share/opencode 2>/dev/null || \
+  mkdir -p /home/developer/.local/share/opencode
+
 # Fix SSH key permissions (mounted read-only from host with wrong UID)
 if [ -d /home/developer/.ssh-host ]; then
   mkdir -p /home/developer/.ssh
