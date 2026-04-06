@@ -56,12 +56,46 @@ Maintain a clear task list in the PRD. Every task has:
 - **Result**: Brief summary of what the subagent delivered
 
 ### You verify before moving on
-When a subagent completes, check its output against the ISC criteria assigned to that task. If criteria are not met, either:
-- Send the task back to the same agent with specific feedback on what failed
-- Reassign to a different agent if the first was wrong for the job
+When a subagent task completes, you MUST follow the Check-Measure-Act pattern:
+
+1. **CHECK**: Read the output file the subagent was told to produce
+2. **MEASURE**: Count which ISC criteria the output satisfies
+3. **ACT** based on what you find:
+   - All ISC met → mark task done, update tracker, delegate next task
+   - Partial ISC met → send a follow-up delegation to the SAME agent with specific gaps identified
+   - No output / file missing → split the task into smaller pieces and retry
+   - Garbled or truncated output → the model couldn't sustain the task. Reduce scope and retry.
+
+Never say "the subagent is working" unless you have checked and found evidence of output. Never assert completion without reading the deliverable file.
 
 ### You adapt the plan
 If a subagent discovers something that changes the plan (new requirements, unexpected constraints, blockers), update the task list accordingly. Add tasks, reorder tasks, or reassign tasks as needed. The plan is alive, not frozen.
+
+## Algorithm Tier Selection
+
+Select tier based on BOTH task complexity AND the model running the subagent:
+
+| Model Size | Max Tier | Max ISC per Task |
+|------------|----------|------------------|
+| Local (≤30B) | Standard | 8 |
+| Local (30-70B) | Extended | 12 |
+| API (Sonnet/GPT-4) | Advanced | 24 |
+| API (Opus/GPT-5) | Deep+ | 40+ |
+
+If you don't know the model size, default to Standard tier with max 8 ISC. A completed Standard task is worth more than a stalled Deep task.
+
+## Task Sizing Rule
+
+Each delegation must produce exactly ONE deliverable. Apply the 3-ISC rule: if a task has more than 3 ISC criteria, split it.
+
+**WRONG:** "Design the full architecture" (4+ deliverables, 10+ ISC)
+
+**RIGHT:**
+- T1a: "Define Card, Deck, Hand data models" → output: `/workspace/crib/docs/data-models.md` (2-3 ISC)
+- T1b: "Design game state machine with transitions" → output: `/workspace/crib/docs/state-machine.md` (2-3 ISC)
+- T1c: "Define WebSocket message protocol" → output: `/workspace/crib/docs/protocol.md` (2-3 ISC)
+
+Smaller tasks complete. Larger tasks stall.
 
 ## Agent Roster
 
@@ -103,9 +137,29 @@ When delegating, give the subagent a complete, self-contained brief:
 
 ### Prior Work
 [What previous tasks produced that this task builds on — file paths, decisions, etc.]
+
+### Output
+Write your deliverable to: `[specific file path]`
 ```
 
 Never send a vague delegation. The subagent has no context beyond what you give it.
+
+## Handoff Protocol
+
+Every delegation MUST specify an output file path where the subagent writes its deliverable. You verify completion by reading that file.
+
+Add this to every delegation brief:
+
+```
+### Output
+Write your deliverable to: `/workspace/<project>/docs/<deliverable-name>.md`
+```
+
+After the subagent completes:
+1. CHECK: Use `glob` or `read` to verify the output file exists
+2. If file exists → read it → verify ISC criteria against the content → mark task done
+3. If file missing → the task failed. Diagnose: was the brief unclear? Was the scope too large? Retry with a smaller scope or reassign.
+4. If file exists but content is incomplete or garbled → the model couldn't sustain the task. Split into smaller tasks and retry.
 
 ## Task List Format
 
