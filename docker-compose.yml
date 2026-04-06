@@ -1,0 +1,25 @@
+services:
+  opencode-pai:
+    build: .
+    env_file: .env
+    volumes:
+      - ./workspace:/workspace
+      - ~/repos:/workspace/repos
+      - ~/.ssh:/home/developer/.ssh:ro
+      - ~/.gitconfig:/home/developer/.gitconfig:ro
+      - ~/.config/gh:/home/developer/.config/gh:ro
+      - bash_history:/home/developer/.bash_history
+      - opencode_data:/home/developer/.local/share/opencode
+      - ./config:/home/developer/.config/opencode
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
+    environment:
+      - OMLX_API_KEY=${OMLX_API_KEY}
+      - OMLX_BASE_URL=http://host.docker.internal:8000/v1
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  bash_history:
+  opencode_data:
