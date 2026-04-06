@@ -33,6 +33,27 @@ Only change what was asked. Do not refactor adjacent code, rename variables for 
 - No "Generated with" footers
 - This is a security-level requirement with zero exceptions
 
+## Algorithm Usage (Mandatory)
+
+For any non-trivial task, you MUST use the `pai-algorithm` skill. Invoke it with: `skill({ name: "pai-algorithm" })`
+
+**Non-trivial means:**
+- Multi-step work (more than a single file edit or quick lookup)
+- Any task that requires planning, design, or architecture
+- Building new features or components
+- Debugging complex issues across multiple files
+- Refactoring or restructuring code
+- Any task the user explicitly says to use the Algorithm for
+
+**Trivial tasks that do NOT need the Algorithm:**
+- Simple lookups ("what version is this?")
+- Single-line fixes with an obvious cause
+- Reading/explaining existing code
+- Quick questions with factual answers
+- File renaming or simple moves
+
+**When in doubt, use the Algorithm.** It is better to use structured methodology on a simple task than to skip it on a complex one. The Algorithm's OBSERVE phase will right-size the effort level automatically.
+
 ## Stack Preferences
 
 - TypeScript over Python

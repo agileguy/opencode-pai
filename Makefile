@@ -28,7 +28,8 @@ test-e2e:
 	docker compose exec opencode-pai bash -c '\
 		bash /workspace/repos/opencode-pai/tests/model-routing.sh && \
 		bash /workspace/repos/opencode-pai/tests/e2e-smoke.sh && \
-		bash /workspace/repos/opencode-pai/tests/e2e-algorithm.sh'
+		bash /workspace/repos/opencode-pai/tests/e2e-algorithm.sh && \
+		bash /workspace/repos/opencode-pai/tests/e2e-algorithm-auto.sh'
 
 test: test-quick test-e2e
 

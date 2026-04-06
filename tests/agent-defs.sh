@@ -52,6 +52,18 @@ for AGENT in "${REQUIRED_AGENTS[@]}"; do
     fi
 done
 
+# Test: AGENTS.md contains Algorithm usage instructions
+AGENTS_MD="${AGENT_DIR}/../AGENTS.md"
+if [ -f "$AGENTS_MD" ]; then
+    if grep -q "pai-algorithm" "$AGENTS_MD" && grep -q "non-trivial" "$AGENTS_MD"; then
+        pass "AGENTS.md contains Algorithm usage instructions"
+    else
+        fail "AGENTS.md missing Algorithm usage instructions"
+    fi
+else
+    fail "AGENTS.md file not found"
+fi
+
 echo ""
 echo "AGENT-DEFS: ${PASS} passed, ${FAIL} failed"
 [ "$FAIL" -eq 0 ] && exit 0 || exit 1
