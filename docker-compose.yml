@@ -5,7 +5,7 @@ services:
     volumes:
       - ./workspace:/workspace
       - ~/repos:/workspace/repos
-      - ~/.ssh:/home/developer/.ssh:ro
+      - ~/.ssh:/home/developer/.ssh-host:ro
       - ~/.gitconfig:/home/developer/.gitconfig:ro
       - ~/.config/gh:/home/developer/.config/gh:ro
       - bash_history:/home/developer/.bash_history

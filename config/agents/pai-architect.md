@@ -5,13 +5,15 @@ temperature: 0.2
 tools:
   write: false
   edit: false
-  bash: false
+  bash: true
 permission:
   edit: deny
   write: deny
   bash:
-    "*": ask
-    "git *": allow
+    "*": deny
+    "git status*": allow
+    "git diff*": allow
+    "git log*": allow
 ---
 
 # Serena Blackwood — System Architect

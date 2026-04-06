@@ -1,6 +1,15 @@
 #!/bin/bash
 set -euo pipefail
 
+# Fix SSH key permissions (mounted read-only from host with wrong UID)
+if [ -d /home/developer/.ssh-host ]; then
+  mkdir -p /home/developer/.ssh
+  cp /home/developer/.ssh-host/* /home/developer/.ssh/ 2>/dev/null || true
+  chmod 700 /home/developer/.ssh
+  chmod 600 /home/developer/.ssh/* 2>/dev/null || true
+  chmod 644 /home/developer/.ssh/*.pub 2>/dev/null || true
+fi
+
 echo "============================================"
 echo "  PAI-OpenCode Environment"
 echo "============================================"

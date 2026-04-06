@@ -73,12 +73,13 @@ ENV BUN_INSTALL=/usr/local/bun
 RUN curl -fsSL https://bun.sh/install | bash -s -- "bun-v1.2.5"
 ENV PATH="/usr/local/bun/bin:${PATH}"
 
-# uv package manager
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-ENV PATH="/root/.local/bin:${PATH}"
+# uv package manager (pinned version, installs directly to /usr/local/bin)
+ENV UV_INSTALL_DIR=/usr/local/bin
+RUN curl -LsSf https://astral.sh/uv/0.6.14/install.sh | sh
 
-# OpenCode
-RUN curl -fsSL https://opencode.ai/install | bash
+# OpenCode (installs to /root/.opencode/bin/, copy to shared path)
+RUN curl -fsSL https://opencode.ai/install | bash \
+  && cp /root/.opencode/bin/opencode /usr/local/bin/opencode
 
 # Create developer user (reuse ubuntu user if exists, else create)
 RUN if id ubuntu &>/dev/null; then \
@@ -90,10 +91,6 @@ RUN if id ubuntu &>/dev/null; then \
     echo "developer ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/developer && \
     chmod 0440 /etc/sudoers.d/developer
 
-# Copy uv and opencode binaries to developer-accessible locations
-RUN cp -r /root/.local/bin/* /usr/local/bin/ 2>/dev/null || true && \
-    cp -r /root/.opencode/bin/* /usr/local/bin/ 2>/dev/null || true
-
 # Switch to developer user
 USER developer
 WORKDIR /home/developer
@@ -102,7 +99,7 @@ WORKDIR /home/developer
 RUN uv python install 3.12
 
 # Set PATH for developer
-ENV PATH="/home/developer/.local/bin:/home/developer/.opencode/bin:/usr/local/bun/bin:/usr/local/bin:${PATH}"
+ENV PATH="/home/developer/.local/bin:/usr/local/bun/bin:/usr/local/bin:${PATH}"
 
 COPY --chown=developer:developer entrypoint.sh /home/developer/entrypoint.sh
 RUN chmod 755 /home/developer/entrypoint.sh
