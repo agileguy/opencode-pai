@@ -69,5 +69,10 @@
     "pai-sre": { "model": "omlx/gemma-4-26b-a4b-it-4bit" },
     "pai-pm": { "model": "omlx/gemma-4-26b-a4b-it-4bit" }
   },
-  "instructions": ["AGENTS.md"]
+  "instructions": [
+    "AGENTS.md",
+    "pai/context/steering-rules.md",
+    "pai/context/user/profile.md",
+    "pai/context/da/identity.md"
+  ]
 }
