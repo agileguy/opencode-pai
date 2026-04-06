@@ -1,0 +1,30 @@
+name: PAI-OpenCode Validation
+on: [push, pull_request]
+
+jobs:
+  structural-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build container
+        run: docker compose build
+
+      - name: Start container
+        run: docker compose up -d
+        env:
+          OMLX_API_KEY: test-key
+
+      - name: Wait for container
+        run: sleep 5
+
+      - name: Run structural tests
+        run: |
+          docker compose exec -T opencode-pai bash -c '
+            bash /workspace/repos/opencode-pai/tests/agent-defs.sh &&
+            bash /workspace/repos/opencode-pai/tests/skill-loading.sh &&
+            bash /workspace/repos/opencode-pai/tests/plugin-hooks.sh'
+
+      - name: Teardown
+        if: always()
+        run: docker compose down
