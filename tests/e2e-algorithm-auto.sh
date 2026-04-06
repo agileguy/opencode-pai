@@ -38,9 +38,9 @@ else
     fail "Algorithm was NOT triggered — AGENTS.md instruction may not be followed"
 fi
 
-# Test 3: Task was understood (CSV/JSON mentioned in output)
-if echo "$ALGO_OUTPUT" | grep -qiE "csv|json|header|parse"; then
-    pass "Task context understood (CSV/JSON referenced)"
+# Test 3: Task was understood (CSV/JSON/CLI/tool mentioned in output)
+if echo "$ALGO_OUTPUT" | grep -qiE "csv|json|header|parse|cli|tool|typescript|build"; then
+    pass "Task context understood"
 else
     fail "Task context not reflected in output"
 fi

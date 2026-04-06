@@ -53,7 +53,7 @@ for AGENT in "${REQUIRED_AGENTS[@]}"; do
 done
 
 # Test: AGENTS.md contains Algorithm usage instructions
-AGENTS_MD="${AGENT_DIR}/../AGENTS.md"
+AGENTS_MD="${AGENTS_DIR}/../AGENTS.md"
 if [ -f "$AGENTS_MD" ]; then
     if grep -q "pai-algorithm" "$AGENTS_MD" && grep -q "non-trivial" "$AGENTS_MD"; then
         pass "AGENTS.md contains Algorithm usage instructions"
