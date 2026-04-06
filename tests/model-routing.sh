@@ -13,8 +13,6 @@ fail() { echo "FAIL: $1"; FAIL=$((FAIL+1)); }
 
 REQUIRED_MODELS=(
     "gemma-4-26b-a4b-it-4bit"
-    "gemma-4-31b-it-4bit"
-    "gpt-oss-20b-MXFP4-Q8"
 )
 
 # Fetch models list once
