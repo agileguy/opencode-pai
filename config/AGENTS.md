@@ -1,5 +1,20 @@
 # PAI Agent Rules
 
+## Agent Roster
+
+| Agent | Role | Mode |
+|-------|------|------|
+| `pai-boss` | Task orchestrator — decomposes asks, runs Algorithm, delegates to subagents, tracks to completion | primary |
+| `pai-architect` | System design, architecture decisions, specs, trade-off analysis | primary (read-only) |
+| `pai-engineer` | Implementation, TDD, production-quality code | primary |
+| `pai-designer` | UX/UI design, component design, accessibility | subagent |
+| `pai-qa` | Test execution, edge case hunting, quality verification | subagent |
+| `pai-pentester` | Security audits, vulnerability assessment | subagent |
+| `pai-artist` | Visual content, illustrations, diagrams | subagent |
+| `pai-researcher` | Deep research, analysis, investigation | subagent |
+| `pai-sre` | Infrastructure, deployment, monitoring | subagent |
+| `pai-pm` | Project orchestration, phase management | primary |
+
 ## Core Behavioral Rules
 
 ### Surgical Fixes Only

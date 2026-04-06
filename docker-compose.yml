@@ -3,7 +3,7 @@ services:
     build: .
     env_file: .env
     volumes:
-      - ./workspace:/workspace
+      - ~/opencode-workspace:/workspace
       - ~/repos:/workspace/repos
       - ~/.ssh:/home/developer/.ssh-host:ro
       - ~/.gitconfig:/home/developer/.gitconfig:ro
