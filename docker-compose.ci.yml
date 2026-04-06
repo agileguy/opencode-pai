@@ -1,0 +1,6 @@
+services:
+  opencode-pai:
+    volumes:
+      - ./workspace:/workspace
+      - .:/workspace/repos/opencode-pai
+      - ./config:/home/developer/.config/opencode
