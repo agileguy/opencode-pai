@@ -23,6 +23,19 @@ Select a tier based on complexity, scope, and time pressure. Default to Standard
 
 See [effort-tiers.md](references/effort-tiers.md) for detailed guidance.
 
+### Model-Aware Tier Selection
+
+The effort tier should respect the running model's output capacity:
+
+| Model Class | Recommended Max Tier |
+|-------------|---------------------|
+| Small local (≤30B, 4-bit) | Standard (8-16 ISC) |
+| Medium local (30-70B) | Extended (16-24 ISC) |
+| API standard (Sonnet, GPT-4o) | Advanced (24-48 ISC) |
+| API premium (Opus, GPT-5) | Deep or Comprehensive |
+
+If the current model cannot sustain the selected tier's output requirements, automatically downgrade to the next lower tier. A completed Standard-tier task is worth more than a stalled Deep-tier task.
+
 ## The 7 Phases
 
 ### Phase 1: OBSERVE

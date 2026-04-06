@@ -15,6 +15,20 @@
 | `pai-sre` | Infrastructure, deployment, monitoring | subagent |
 | `pai-pm` | Project orchestration, phase management | primary |
 
+## Orchestration Rules
+
+### File-Based Handoff
+All subagent deliverables must be written to files in the workspace. The calling agent verifies completion by reading the file. Verbal claims of completion ("I'm done") are not sufficient — the file must exist and contain the deliverable.
+
+### Task Sizing
+A single delegation should produce one artifact and satisfy 1-3 ISC criteria. If a brief requires more than 3 ISC, the task is too large — split it into independent sub-tasks.
+
+### Algorithm Tier Caps
+Local models (oMLX) use Standard tier only (8 ISC max). API-backed models may use higher tiers. When in doubt, default to Standard — a completed Standard task beats an incomplete Deep task.
+
+### Circuit Breakers
+All agents have maxSteps configured. If an agent hits its step limit, the work product at that point is the final output. The calling agent assesses what was produced and either accepts, retries with a smaller scope, or reassigns.
+
 ## Core Behavioral Rules
 
 ### Surgical Fixes Only
