@@ -1,6 +1,7 @@
 import type { Plugin } from "@opencode-ai/plugin"
 import { readFileSync, existsSync } from "fs"
 import { join } from "path"
+import { log } from "./pai-log"
 
 export const PAIContextLoader: Plugin = async ({ directory }) => {
   const contextDir = join(process.env.HOME || "", ".config/opencode/pai/context")
@@ -28,7 +29,11 @@ export const PAIContextLoader: Plugin = async ({ directory }) => {
           contexts.push(`[Steering Rules loaded: ${steeringRules}]`)
         }
 
-        // Silent — no console output to avoid bleeding into TUI
+        if (contexts.length > 0) {
+          log("context", `Loaded: ${contexts.join(", ")}`)
+        } else {
+          log("context", "No context files found — running with defaults")
+        }
       }
     },
   }

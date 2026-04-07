@@ -1,6 +1,7 @@
 import type { Plugin } from "@opencode-ai/plugin"
 import { readFileSync, writeFileSync, appendFileSync, existsSync, mkdirSync } from "fs"
 import { join, basename } from "path"
+import { log, logError } from "./pai-log"
 
 const PAI_DIR = join(process.env.HOME || "", ".config/opencode/pai")
 const MEMORY_DIR = join(PAI_DIR, "memory")
@@ -57,11 +58,11 @@ export const PAIMemory: Plugin = async ({ $ }) => {
             join(STATE_DIR, "current-work.json"),
             JSON.stringify(state, null, 2)
           )
-          // Silent — synced to state file, no TUI output
+          log("memory", `PRD synced: ${state.task} (${state.phase}, ${state.progress})`)
         }
       } catch (e) {
         // Graceful fail — don't break the session
-        // Silent fail — don't pollute TUI
+        logError("memory", "PRD sync error", e)
       }
     },
 
@@ -86,7 +87,7 @@ export const PAIMemory: Plugin = async ({ $ }) => {
             join(SIGNALS_DIR, "ratings.jsonl"),
             JSON.stringify(entry) + "\n"
           )
-          // Silent — captured to signals file
+          log("memory", `Rating captured: ${rating}/10`)
         }
       }
     },

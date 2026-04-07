@@ -1,4 +1,5 @@
 import type { Plugin } from "@opencode-ai/plugin"
+import { log } from "./pai-log"
 
 /**
  * PAI Tier Enforcer Plugin
@@ -35,7 +36,9 @@ This is not optional. Exceeding Standard tier will cause your output to truncate
   return {
     // Inject tier constraint into system prompt for local models
     "experimental.chat.system.transform": async (input, output) => {
-      if (isLocalModel(input.model)) {
+      const local = isLocalModel(input.model)
+      log("tier", `Model: ${String(input.model)} → ${local ? "LOCAL (Standard enforced)" : "API (full tiers)"}`)
+      if (local) {
         output.push({
           type: "text",
           text: TIER_ENFORCEMENT,
