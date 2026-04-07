@@ -57,11 +57,11 @@ export const PAIMemory: Plugin = async ({ $ }) => {
             join(STATE_DIR, "current-work.json"),
             JSON.stringify(state, null, 2)
           )
-          console.log(`[PAI Memory] PRD synced: ${state.task} (${state.phase}, ${state.progress})`)
+          // Silent — synced to state file, no TUI output
         }
       } catch (e) {
         // Graceful fail — don't break the session
-        console.error(`[PAI Memory] PRD sync error: ${e}`)
+        // Silent fail — don't pollute TUI
       }
     },
 
@@ -86,7 +86,7 @@ export const PAIMemory: Plugin = async ({ $ }) => {
             join(SIGNALS_DIR, "ratings.jsonl"),
             JSON.stringify(entry) + "\n"
           )
-          console.log(`[PAI Memory] Rating captured: ${rating}/10`)
+          // Silent — captured to signals file
         }
       }
     },

@@ -28,11 +28,7 @@ export const PAIContextLoader: Plugin = async ({ directory }) => {
           contexts.push(`[Steering Rules loaded: ${steeringRules}]`)
         }
 
-        if (contexts.length > 0) {
-          console.log(`[PAI] Context loaded: ${contexts.join(", ")}`)
-        } else {
-          console.log("[PAI] No context files found — running with defaults")
-        }
+        // Silent — no console output to avoid bleeding into TUI
       }
     },
   }
