@@ -66,7 +66,7 @@ run_task() {
   # Log result
   echo "{\"agent\":\"$agent\",\"task\":\"$task_name\",\"score\":$score,\"ts\":\"$(date -Iseconds)\"}" >> "$RESULTS_DIR/results.jsonl"
 
-  TOTAL_SCORE=$(echo "$TOTAL_SCORE + $score" | bc)
+  TOTAL_SCORE=$(awk "BEGIN {print $TOTAL_SCORE + $score}")
   TOTAL_TASKS=$((TOTAL_TASKS + 1))
 }
 
@@ -94,7 +94,7 @@ fi
 
 # Aggregate score
 if [ "$TOTAL_TASKS" -gt 0 ]; then
-  AGG_SCORE=$(echo "scale=4; $TOTAL_SCORE / $TOTAL_TASKS" | bc)
+  AGG_SCORE=$(awk "BEGIN {printf \"%.4f\", $TOTAL_SCORE / $TOTAL_TASKS}")
 else
   AGG_SCORE="0.0000"
 fi

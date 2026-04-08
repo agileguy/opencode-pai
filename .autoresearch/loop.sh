@@ -118,7 +118,7 @@ Remember: ONLY edit the markdown body of the agent file, not the YAML frontmatte
   echo "  Score: $SCORE (baseline: $BASELINE_SCORE)"
 
   # 3. DECIDE — Keep or revert
-  IMPROVED=$(echo "$SCORE > $BASELINE_SCORE" | bc -l 2>/dev/null || echo 0)
+  IMPROVED=$(awk "BEGIN {print ($SCORE > $BASELINE_SCORE) ? 1 : 0}")
 
   if [ "$IMPROVED" = "1" ]; then
     echo "  [3/3] ✓ IMPROVED — committing"
