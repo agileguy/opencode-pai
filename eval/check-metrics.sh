@@ -49,7 +49,7 @@ if echo "$AGENT" | grep -q "engineer"; then
 
   # E4. Multiple test cases (not just one token test)
   if [ -n "$TEST" ]; then
-    TEST_COUNT=$(grep -cE "it\(|test\(|describe\(" "$TEST" 2>/dev/null || echo 0)
+    TEST_COUNT=$(grep -cE "it\(|test\(|describe\(" "$TEST" 2>/dev/null | head -1 || echo 0)
     [ "$TEST_COUNT" -ge 3 ] && pass "E4: ≥3 test cases ($TEST_COUNT found)" || fail "E4: ≥3 test cases ($TEST_COUNT found)"
   else
     fail "E4: ≥3 test cases"
@@ -57,7 +57,7 @@ if echo "$AGENT" | grep -q "engineer"; then
 
   # E5. Tests have assertions
   if [ -n "$TEST" ]; then
-    ASSERT_COUNT=$(grep -cE "expect|assert|toBe|toEqual|toThrow|toContain" "$TEST" 2>/dev/null || echo 0)
+    ASSERT_COUNT=$(grep -cE "expect|assert|toBe|toEqual|toThrow|toContain" "$TEST" 2>/dev/null | head -1 || echo 0)
     [ "$ASSERT_COUNT" -ge 3 ] && pass "E5: ≥3 assertions ($ASSERT_COUNT found)" || fail "E5: ≥3 assertions ($ASSERT_COUNT found)"
   else
     fail "E5: ≥3 assertions"
@@ -70,7 +70,7 @@ if echo "$AGENT" | grep -q "engineer"; then
 
   # Q1. No 'any' type (TypeScript discipline)
   if [ -n "$IMPL" ]; then
-    ANY_COUNT=$(grep -cE ": any\b|<any>|as any" "$IMPL" 2>/dev/null || echo 0)
+    ANY_COUNT=$(grep -cE ": any\b|<any>|as any" "$IMPL" 2>/dev/null | head -1 || echo 0)
     [ "$ANY_COUNT" -eq 0 ] && pass "Q1: no 'any' types" || fail "Q1: no 'any' types ($ANY_COUNT found)"
   else
     fail "Q1: no 'any' types"
@@ -86,7 +86,7 @@ if echo "$AGENT" | grep -q "engineer"; then
 
   # Q3. Error handling present (try/catch, throw, or error return)
   if [ -n "$IMPL" ]; then
-    HAS_ERROR=$(grep -cE "throw |try \{|catch \(|Error\(|error|null|undefined" "$IMPL" 2>/dev/null || echo 0)
+    HAS_ERROR=$(grep -cE "throw |try \{|catch \(|Error\(|null|undefined" "$IMPL" 2>/dev/null | head -1 || echo 0)
     [ "$HAS_ERROR" -ge 1 ] && pass "Q3: error handling present" || fail "Q3: no error handling"
   else
     fail "Q3: error handling present"
@@ -94,7 +94,7 @@ if echo "$AGENT" | grep -q "engineer"; then
 
   # Q4. Edge cases in tests (empty input, null, boundary)
   if [ -n "$TEST" ]; then
-    EDGE_CASES=$(grep -ciE "empty|null|undefined|edge|boundary|invalid|throw|error|zero|negative|special|\"\"|\[\]" "$TEST" 2>/dev/null || echo 0)
+    EDGE_CASES=$(grep -ciE "empty|null|undefined|edge|boundary|invalid|throw|error|zero|negative|special" "$TEST" 2>/dev/null | head -1 || echo 0)
     [ "$EDGE_CASES" -ge 2 ] && pass "Q4: edge cases tested ($EDGE_CASES found)" || fail "Q4: insufficient edge cases ($EDGE_CASES found)"
   else
     fail "Q4: edge cases tested"
@@ -102,8 +102,8 @@ if echo "$AGENT" | grep -q "engineer"; then
 
   # Q5. Function has type annotations (params and return)
   if [ -n "$IMPL" ]; then
-    TYPED_FUNCS=$(grep -cE "function \w+\(.*:.*\).*:" "$IMPL" 2>/dev/null || echo 0)
-    TYPED_ARROWS=$(grep -cE "const \w+.*=.*\(.*:.*\).*=>|const \w+.*:.*=" "$IMPL" 2>/dev/null || echo 0)
+    TYPED_FUNCS=$(grep -cE "function \w+\(.*:.*\).*:" "$IMPL" 2>/dev/null | head -1 || echo 0)
+    TYPED_ARROWS=$(grep -cE "const \w+.*=.*\(.*:.*\).*=>|const \w+.*:.*=" "$IMPL" 2>/dev/null | head -1 || echo 0)
     TOTAL_TYPED=$((TYPED_FUNCS + TYPED_ARROWS))
     [ "$TOTAL_TYPED" -ge 1 ] && pass "Q5: typed function signatures" || fail "Q5: no type annotations"
   else
