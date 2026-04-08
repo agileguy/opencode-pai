@@ -27,20 +27,30 @@ run_task() {
   rm -rf "$output_dir" 2>/dev/null
   mkdir -p "$output_dir"
 
-  # Read task prompt
-  local prompt
-  prompt=$(cat "$task_file")
+  # Read task prompt and inject output dir
+  local raw_prompt
+  raw_prompt=$(cat "$task_file")
+  local prompt="${raw_prompt} IMPORTANT: Save ALL output files to ${output_dir}/"
 
   # Run opencode with the agent
   echo "  Running task (timeout ${TIMEOUT}s)..."
+  echo "  Output dir: $output_dir"
   timeout "$TIMEOUT" opencode run \
     --agent "$agent" \
     --dangerously-skip-permissions \
     --pure \
+    --dir /workspace \
     "$prompt" \
     2>"$output_dir/.stderr.log" \
     >"$output_dir/.stdout.log" \
     || true
+
+  # Also scan common alternative locations and move files if needed
+  for alt_dir in /workspace/eval/output/"$(echo "$task_name" | sed 's/^[0-9]*-//')" /workspace/"$(echo "$task_name" | sed 's/^[0-9]*-//')"; do
+    if [ -d "$alt_dir" ] && [ "$alt_dir" != "$output_dir" ]; then
+      cp -a "$alt_dir"/* "$output_dir/" 2>/dev/null || true
+    fi
+  done
 
   # Check metrics
   local score
