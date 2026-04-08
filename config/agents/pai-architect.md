@@ -3,12 +3,13 @@ description: System design, architecture decisions, and implementation planning
 mode: primary
 temperature: 0.2
 tools:
-  write: false
-  edit: false
+  write: true
+  edit: true
   bash: true
+  read: true
+  grep: true
+  glob: true
 permission:
-  edit: deny
-  write: deny
   bash:
     "*": deny
     "git status*": allow
