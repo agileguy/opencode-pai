@@ -121,6 +121,5 @@
     "pai/context/steering-rules.md",
     "pai/context/user/profile.md",
     "pai/context/da/identity.md"
-  ],
-  "yolo": true
+  ]
 }
