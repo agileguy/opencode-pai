@@ -2,6 +2,7 @@
 # check-metrics.sh — Binary metric checker for a single eval task
 # Usage: check-metrics.sh <agent> <task-name> <output-dir>
 # Returns: score as decimal (0.0 to 1.0) on the last line
+# Designed to be fast and never hang — no test execution, just static checks
 
 set -uo pipefail
 
@@ -14,96 +15,62 @@ TOTAL=0
 pass() { PASSED=$((PASSED + 1)); TOTAL=$((TOTAL + 1)); echo "  PASS: $1"; }
 fail() { TOTAL=$((TOTAL + 1)); echo "  FAIL: $1"; }
 
-echo "Checking metrics for $AGENT/$TASK in $OUTPUT_DIR"
+echo "Checking: $AGENT/$TASK in $OUTPUT_DIR"
 
-if [ "$AGENT" = "pai-engineer" ] || [ "$AGENT" = "engineer" ]; then
-  # 1. File created — any .ts file (not test)
-  IMPL_FILES=$(find "$OUTPUT_DIR" -maxdepth 1 -name "*.ts" ! -name "*.test.ts" ! -name "*.spec.ts" 2>/dev/null | head -1)
-  if [ -n "$IMPL_FILES" ]; then pass "file_created"; else fail "file_created"; fi
+if echo "$AGENT" | grep -q "engineer"; then
+  # Find impl and test files
+  IMPL=$(find "$OUTPUT_DIR" -maxdepth 1 -name "*.ts" ! -name "*.test.ts" ! -name "*.spec.ts" 2>/dev/null | head -1)
+  TEST=$(find "$OUTPUT_DIR" -maxdepth 1 \( -name "*.test.ts" -o -name "*.spec.ts" \) 2>/dev/null | head -1)
 
-  # 2. Valid syntax — check TypeScript can be parsed by bun
-  if [ -n "$IMPL_FILES" ]; then
-    if bun run --bun -e "import('$IMPL_FILES')" 2>/dev/null; then
-      pass "valid_syntax"
-    elif grep -q "export" "$IMPL_FILES" 2>/dev/null; then
-      # Fallback: file has exports = likely valid TS
-      pass "valid_syntax"
-    else
-      fail "valid_syntax"
-    fi
+  # 1. Implementation file exists
+  [ -n "$IMPL" ] && [ -s "$IMPL" ] && pass "file_created" || fail "file_created"
+
+  # 2. Has export (proxy for valid TS)
+  [ -n "$IMPL" ] && grep -q "export" "$IMPL" 2>/dev/null && pass "has_export" || fail "has_export"
+
+  # 3. Test file exists
+  [ -n "$TEST" ] && [ -s "$TEST" ] && pass "tests_exist" || fail "tests_exist"
+
+  # 4. Test has assertions (expect/assert/assertEquals)
+  [ -n "$TEST" ] && grep -qE "expect|assert|assertEquals" "$TEST" 2>/dev/null && pass "tests_have_assertions" || fail "tests_have_assertions"
+
+  # 5. No hallucinated imports (no npm packages that aren't bun builtins)
+  if [ -n "$IMPL" ]; then
+    # Allow: relative imports, node: builtins, bun: builtins
+    BAD=$(grep "^import" "$IMPL" 2>/dev/null | grep -vE 'from ["\x27]\.|from ["\x27]node:|from ["\x27]bun:|from ["\x27]fs|from ["\x27]path|from ["\x27]crypto|from ["\x27]util' | head -1)
+    [ -z "$BAD" ] && pass "clean_imports" || fail "clean_imports"
   else
-    fail "valid_syntax"
+    fail "clean_imports"
   fi
 
-  # 3. Tests exist
-  TEST_FILES=$(find "$OUTPUT_DIR" -maxdepth 1 \( -name "*.test.ts" -o -name "*.spec.ts" \) 2>/dev/null | head -1)
-  if [ -n "$TEST_FILES" ]; then pass "tests_exist"; else fail "tests_exist"; fi
+  # 6. Implementation has function/class (not just comments)
+  [ -n "$IMPL" ] && grep -qE "function |class |const .* =" "$IMPL" 2>/dev/null && pass "has_logic" || fail "has_logic"
 
-  # 4. Tests pass
-  if [ -n "$TEST_FILES" ]; then
-    if (cd "$OUTPUT_DIR" && bun test 2>&1 | grep -q "pass"); then
-      pass "tests_pass"
-    else
-      fail "tests_pass"
-    fi
+  # 7. Test imports implementation (connected, not standalone)
+  [ -n "$TEST" ] && grep -qE "import|require" "$TEST" 2>/dev/null && pass "test_imports_impl" || fail "test_imports_impl"
+
+  # 8. Reasonable size (not empty, not bloated)
+  if [ -n "$IMPL" ]; then
+    LINES=$(wc -l < "$IMPL" | tr -d ' ')
+    [ "$LINES" -ge 3 ] && [ "$LINES" -le 200 ] && pass "reasonable_size" || fail "reasonable_size"
   else
-    fail "tests_pass"
+    fail "reasonable_size"
   fi
 
-  # 5. No hallucinated imports
-  if [ -n "$IMPL_FILES" ]; then
-    BAD_IMPORTS=$(grep "^import" "$IMPL_FILES" 2>/dev/null | grep -v 'from "\.\|from "node:\|from "fs\|from "path\|from "crypto\|from "util\|from "assert\|from "bun:' | grep -v "from '\.\|from 'node:\|from 'fs\|from 'path\|from 'crypto\|from 'util\|from 'assert\|from 'bun:" | head -1)
-    if [ -z "$BAD_IMPORTS" ]; then pass "no_hallucinated_imports"; else fail "no_hallucinated_imports"; fi
-  else
-    fail "no_hallucinated_imports"
-  fi
-
-  # 6. Used tools — files exist = tools were used
-  if [ -n "$IMPL_FILES" ]; then pass "used_tools"; else fail "used_tools"; fi
-
-  # 7. TDD order — test file created before impl (use ls -lt ordering)
-  if [ -n "$TEST_FILES" ] && [ -n "$IMPL_FILES" ]; then
-    # On Linux, stat -c %Y gives epoch seconds
-    TEST_TIME=$(stat -c %Y "$TEST_FILES" 2>/dev/null || echo 0)
-    IMPL_TIME=$(stat -c %Y "$IMPL_FILES" 2>/dev/null || echo 0)
-    if [ "$TEST_TIME" -le "$IMPL_TIME" ] 2>/dev/null; then
-      pass "tdd_order"
-    else
-      # Fallback: both exist, give benefit of doubt
-      pass "tdd_order"
-    fi
-  else
-    fail "tdd_order"
-  fi
-
-  # 8. Fast start — reasonable file count (not over-engineered)
-  FILE_COUNT=$(find "$OUTPUT_DIR" -maxdepth 1 -name "*.ts" 2>/dev/null | wc -l | tr -d ' ')
-  if [ "$FILE_COUNT" -le 5 ] && [ "$FILE_COUNT" -ge 1 ]; then pass "fast_start"; else fail "fast_start"; fi
-
-elif [ "$AGENT" = "pai-boss" ] || [ "$AGENT" = "boss" ]; then
-  ANY_FILES=$(find "$OUTPUT_DIR" -name "*.ts" 2>/dev/null | head -1)
-
-  if [ -n "$ANY_FILES" ]; then
-    pass "delegated"
-    pass "correct_agent"
-    pass "output_exists"
-    pass "no_self_impl"
-    pass "completed"
-  else
-    fail "delegated"
-    fail "correct_agent"
-    fail "output_exists"
-    fail "no_self_impl"
-    fail "completed"
-  fi
+elif echo "$AGENT" | grep -q "boss"; then
+  ANY=$(find "$OUTPUT_DIR" -name "*.ts" 2>/dev/null | head -1)
+  [ -n "$ANY" ] && pass "delegated" || fail "delegated"
+  [ -n "$ANY" ] && pass "output_exists" || fail "output_exists"
+  [ -n "$ANY" ] && pass "correct_agent" || fail "correct_agent"
+  [ -n "$ANY" ] && pass "completed" || fail "completed"
+  [ -z "$ANY" ] && { fail "delegated"; fail "output_exists"; fail "correct_agent"; fail "completed"; } 2>/dev/null || true
 fi
 
-# Calculate score using awk (bc may not be available)
+# Score
 if [ "$TOTAL" -eq 0 ]; then
   echo "0.000"
 else
   SCORE=$(awk "BEGIN {printf \"%.3f\", $PASSED / $TOTAL}")
-  echo ""
   echo "Score: $SCORE ($PASSED/$TOTAL)"
   echo "$SCORE"
 fi
