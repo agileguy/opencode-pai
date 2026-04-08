@@ -103,15 +103,17 @@ $TRIED
 $DIVERSITY_HINT
 Focus: the '$FOCUS_NAME' task is currently underperforming. Read the task at eval/tasks/$TASK_DIR_NAME/$FOCUS_NAME.txt, then read the current agent prompt at $AGENT_PROMPT_FILE.
 
-Make exactly ONE targeted mutation to $AGENT_PROMPT_FILE that you hypothesize will improve the agent's score on this task. Your mutation MUST be different from everything in the ALREADY TRIED list above. Write your hypothesis to .autoresearch/current-hypothesis.txt.
+Make exactly ONE targeted mutation to $AGENT_PROMPT_FILE that you hypothesize will improve the agent's score on this task. Your mutation MUST be different from everything in the ALREADY TRIED list above.
 
-Remember: ONLY edit the markdown body of the agent file, not the YAML frontmatter. Keep the prompt SHORT (under 80 lines). You MUST make a file change — do not just read and exit."
+After editing the agent file, READ .autoresearch/current-hypothesis.txt first, THEN write your hypothesis to it.
+
+Remember: ONLY edit the markdown body of the agent file, not the YAML frontmatter. Keep the prompt SHORT (under 80 lines). You MUST make a file change — do not just read and exit. IMPORTANT: You must READ any file before you can WRITE to it."
 
   timeout 180 opencode run \
     --dangerously-skip-permissions \
     --pure \
     "$MUTATE_PROMPT" \
-    2>/dev/null >/dev/null || true
+    >"$AR_DIR/mutator-stdout.log" 2>"$AR_DIR/mutator-stderr.log" || true
 
   # Check if anything actually changed
   if git diff --quiet config/agents/; then
