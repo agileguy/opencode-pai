@@ -88,9 +88,10 @@ Make exactly ONE targeted mutation to $AGENT_PROMPT_FILE that you hypothesize wi
 
 Remember: ONLY edit the markdown body of the agent file, not the YAML frontmatter. Keep the prompt SHORT (under 80 lines)."
 
-  timeout 180 opencode \
-    --prompt "$MUTATE_PROMPT" \
+  timeout 180 opencode run \
+    --dangerously-skip-permissions \
     --pure \
+    "$MUTATE_PROMPT" \
     2>/dev/null >/dev/null || true
 
   # Check if anything actually changed

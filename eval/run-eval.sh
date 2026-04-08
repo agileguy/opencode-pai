@@ -33,10 +33,11 @@ run_task() {
 
   # Run opencode with the agent
   echo "  Running task (timeout ${TIMEOUT}s)..."
-  timeout "$TIMEOUT" opencode \
+  timeout "$TIMEOUT" opencode run \
     --agent "$agent" \
-    --prompt "$prompt" \
+    --dangerously-skip-permissions \
     --pure \
+    "$prompt" \
     2>"$output_dir/.stderr.log" \
     >"$output_dir/.stdout.log" \
     || true
