@@ -239,7 +239,8 @@ elif echo "$AGENT" | grep -q "architect"; then
 
   # A2. Has clear structure (markdown headers)
   if [ -n "$DOC_CONTENT" ]; then
-    HEADER_COUNT=$(echo "$DOC_CONTENT" | grep -cE "^#{1,3} " 2>/dev/null || echo 0)
+    HEADER_COUNT=$(echo "$DOC_CONTENT" | grep -cE "^#{1,3} " 2>/dev/null | tr -d '[:space:]')
+    [ -z "$HEADER_COUNT" ] && HEADER_COUNT=0
     [ "$HEADER_COUNT" -ge 3 ] && pass "A2: structured ($HEADER_COUNT sections)" || fail "A2: poorly structured ($HEADER_COUNT sections)"
   else
     fail "A2: structured document"
@@ -247,7 +248,8 @@ elif echo "$AGENT" | grep -q "architect"; then
 
   # A3. Contains trade-off analysis
   if [ -n "$DOC_CONTENT" ]; then
-    TRADEOFF=$(echo "$DOC_CONTENT" | grep -ciE "trade.?off|pros? and cons?|advantage|disadvantage|versus|vs\.|compared to|alternative" 2>/dev/null || echo 0)
+    TRADEOFF=$(echo "$DOC_CONTENT" | grep -ciE "trade.?off|pros? and cons?|advantage|disadvantage|versus|vs\.|compared to|alternative" 2>/dev/null | tr -d '[:space:]')
+    [ -z "$TRADEOFF" ] && TRADEOFF=0
     [ "$TRADEOFF" -ge 2 ] && pass "A3: trade-off analysis present ($TRADEOFF refs)" || fail "A3: missing trade-off analysis ($TRADEOFF refs)"
   else
     fail "A3: trade-off analysis"
@@ -255,7 +257,8 @@ elif echo "$AGENT" | grep -q "architect"; then
 
   # A4. Addresses constraints and requirements
   if [ -n "$DOC_CONTENT" ]; then
-    CONSTRAINTS=$(echo "$DOC_CONTENT" | grep -ciE "require|constraint|must|should|limit|boundar|scale|performance|latency|throughput" 2>/dev/null || echo 0)
+    CONSTRAINTS=$(echo "$DOC_CONTENT" | grep -ciE "require|constraint|must|should|limit|boundar|scale|performance|latency|throughput" 2>/dev/null | tr -d '[:space:]')
+    [ -z "$CONSTRAINTS" ] && CONSTRAINTS=0
     [ "$CONSTRAINTS" -ge 3 ] && pass "A4: addresses constraints ($CONSTRAINTS refs)" || fail "A4: ignores constraints ($CONSTRAINTS refs)"
   else
     fail "A4: addresses constraints"
@@ -263,7 +266,8 @@ elif echo "$AGENT" | grep -q "architect"; then
 
   # A5. Has concrete recommendation (not just open-ended discussion)
   if [ -n "$DOC_CONTENT" ]; then
-    RECOMMEND=$(echo "$DOC_CONTENT" | grep -ciE "recommend|suggest|propose|chosen|decision|conclusion|prefer|best option|go with" 2>/dev/null || echo 0)
+    RECOMMEND=$(echo "$DOC_CONTENT" | grep -ciE "recommend|suggest|propose|chosen|decision|conclusion|prefer|best option|go with" 2>/dev/null | tr -d '[:space:]')
+    [ -z "$RECOMMEND" ] && RECOMMEND=0
     [ "$RECOMMEND" -ge 1 ] && pass "A5: makes a recommendation" || fail "A5: no clear recommendation"
   else
     fail "A5: makes a recommendation"
@@ -287,7 +291,8 @@ elif echo "$AGENT" | grep -q "architect"; then
 
   # A8. Considers failure modes or risks
   if [ -n "$DOC_CONTENT" ]; then
-    RISKS=$(echo "$DOC_CONTENT" | grep -ciE "fail|risk|edge case|downtime|fallback|degrad|error|disaster|recovery|rollback|mitiga" 2>/dev/null || echo 0)
+    RISKS=$(echo "$DOC_CONTENT" | grep -ciE "fail|risk|edge case|downtime|fallback|degrad|error|disaster|recovery|rollback|mitiga" 2>/dev/null | tr -d '[:space:]')
+    [ -z "$RISKS" ] && RISKS=0
     [ "$RISKS" -ge 2 ] && pass "A8: failure modes addressed ($RISKS refs)" || fail "A8: missing failure analysis ($RISKS refs)"
   else
     fail "A8: failure modes"
