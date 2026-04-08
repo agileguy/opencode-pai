@@ -220,6 +220,91 @@ elif echo "$AGENT" | grep -q "boss"; then
   else
     fail "D6: vague delegation"
   fi
+
+elif echo "$AGENT" | grep -q "architect"; then
+
+  echo "── Architect Output Metrics ──"
+
+  # Find the output markdown file
+  DOC=$(find "$OUTPUT_DIR" -maxdepth 1 -name "*.md" ! -name "README.md" 2>/dev/null | head -1)
+  DOC_CONTENT=""
+  DOC_LINES=0
+  if [ -n "$DOC" ] && [ -s "$DOC" ]; then
+    DOC_CONTENT=$(cat "$DOC")
+    DOC_LINES=$(wc -l < "$DOC" | tr -d ' ')
+  fi
+
+  # A1. Output document exists and is non-empty
+  [ -n "$DOC" ] && [ -s "$DOC" ] && pass "A1: design doc exists" || fail "A1: no design doc produced"
+
+  # A2. Has clear structure (markdown headers)
+  if [ -n "$DOC_CONTENT" ]; then
+    HEADER_COUNT=$(echo "$DOC_CONTENT" | grep -cE "^#{1,3} " 2>/dev/null || echo 0)
+    [ "$HEADER_COUNT" -ge 3 ] && pass "A2: structured ($HEADER_COUNT sections)" || fail "A2: poorly structured ($HEADER_COUNT sections)"
+  else
+    fail "A2: structured document"
+  fi
+
+  # A3. Contains trade-off analysis
+  if [ -n "$DOC_CONTENT" ]; then
+    TRADEOFF=$(echo "$DOC_CONTENT" | grep -ciE "trade.?off|pros? and cons?|advantage|disadvantage|versus|vs\.|compared to|alternative" 2>/dev/null || echo 0)
+    [ "$TRADEOFF" -ge 2 ] && pass "A3: trade-off analysis present ($TRADEOFF refs)" || fail "A3: missing trade-off analysis ($TRADEOFF refs)"
+  else
+    fail "A3: trade-off analysis"
+  fi
+
+  # A4. Addresses constraints and requirements
+  if [ -n "$DOC_CONTENT" ]; then
+    CONSTRAINTS=$(echo "$DOC_CONTENT" | grep -ciE "require|constraint|must|should|limit|boundar|scale|performance|latency|throughput" 2>/dev/null || echo 0)
+    [ "$CONSTRAINTS" -ge 3 ] && pass "A4: addresses constraints ($CONSTRAINTS refs)" || fail "A4: ignores constraints ($CONSTRAINTS refs)"
+  else
+    fail "A4: addresses constraints"
+  fi
+
+  # A5. Has concrete recommendation (not just open-ended discussion)
+  if [ -n "$DOC_CONTENT" ]; then
+    RECOMMEND=$(echo "$DOC_CONTENT" | grep -ciE "recommend|suggest|propose|chosen|decision|conclusion|prefer|best option|go with" 2>/dev/null || echo 0)
+    [ "$RECOMMEND" -ge 1 ] && pass "A5: makes a recommendation" || fail "A5: no clear recommendation"
+  else
+    fail "A5: makes a recommendation"
+  fi
+
+  # A6. Reasonable length (not too short, not bloated — 30 to 300 lines)
+  if [ -n "$DOC" ]; then
+    [ "$DOC_LINES" -ge 30 ] && [ "$DOC_LINES" -le 300 ] && pass "A6: reasonable length ($DOC_LINES lines)" || fail "A6: bad length ($DOC_LINES lines)"
+  else
+    fail "A6: reasonable length"
+  fi
+
+  # A7. No implementation code (stayed in architect lane)
+  if [ -n "$DOC_CONTENT" ]; then
+    CODE_BLOCKS=$(echo "$DOC_CONTENT" | grep -cE "^(import |const |function |class |export |let |var |async )" 2>/dev/null || echo 0)
+    [ "$CODE_BLOCKS" -le 2 ] && pass "A7: no implementation code" || fail "A7: contains implementation code ($CODE_BLOCKS lines)"
+  else
+    fail "A7: no implementation code"
+  fi
+
+  # A8. Considers failure modes or risks
+  if [ -n "$DOC_CONTENT" ]; then
+    RISKS=$(echo "$DOC_CONTENT" | grep -ciE "fail|risk|edge case|downtime|fallback|degrad|error|disaster|recovery|rollback|mitiga" 2>/dev/null || echo 0)
+    [ "$RISKS" -ge 2 ] && pass "A8: failure modes addressed ($RISKS refs)" || fail "A8: missing failure analysis ($RISKS refs)"
+  else
+    fail "A8: failure modes"
+  fi
+
+  echo "── Speed Metrics ──"
+
+  # A9. Fast start (tool call in first 800 chars)
+  FIRST_TOOL=$(echo "$STDOUT_CLEAN" | head -c 800 | grep -ciE "→.*Read|→.*Write|→.*Bash" 2>/dev/null || echo 0)
+  [ "$FIRST_TOOL" -ge 1 ] && pass "A9: fast start" || fail "A9: slow start"
+
+  # A10. Concise agent output
+  if [ -f "$STDOUT_LOG" ]; then
+    OUT_SIZE=$(wc -c < "$STDOUT_LOG" | tr -d ' ')
+    [ "$OUT_SIZE" -le 50000 ] && pass "A10: concise output (${OUT_SIZE} bytes)" || fail "A10: verbose output (${OUT_SIZE} bytes)"
+  else
+    pass "A10: concise output (no log)"
+  fi
 fi
 
 # Score

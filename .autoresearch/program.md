@@ -10,11 +10,12 @@ Agent prompt files in `config/agents/`. Each file defines how a PAI agent behave
 
 - `config/agents/pai-engineer.md` — Writes code, TDD, implementation
 - `config/agents/pai-boss.md` — Orchestrates and delegates to subagents
+- `config/agents/pai-architect.md` — System design, specs, trade-off analysis (no code)
 
 ## Constraints (DO NOT VIOLATE)
 
 1. **Never change the YAML frontmatter** (description, mode, temperature, tools, permission) — only change the markdown body
-2. **Never remove core identity** — pai-engineer must still do TDD, pai-boss must still delegate
+2. **Never remove core identity** — pai-engineer must still do TDD, pai-boss must still delegate, pai-architect must still produce design docs (not code)
 3. **One mutation per experiment** — change ONE thing, not multiple
 4. **Keep prompts SHORT** — local models perform worse with long prompts. Under 80 lines is ideal.
 5. **Never add Algorithm/ISC/PRD references** — local models can't handle that complexity
@@ -44,7 +45,7 @@ Agent prompt files in `config/agents/`. Each file defines how a PAI agent behave
 3. Identify which metrics are failing most often
 4. Form a hypothesis: "If I change X, metric Y should improve because Z"
 5. Make exactly ONE targeted edit to the prompt file
-6. Write your hypothesis to `.autoresearch/current-hypothesis.txt`
+6. Write your hypothesis to the hypothesis file specified in the prompt
 
 ## Metric Definitions (so you know what to optimize for)
 
@@ -81,6 +82,18 @@ There are 16 metrics across 3 categories. Current weak areas are marked with ★
 - `D4: no self-impl` — Boss didn't write code directly
 - `D5: within limits` — Completed without hitting step limit
 - `D6: specific brief` — Delegation included file paths
+
+### pai-architect metrics (design doc quality):
+- `A1: design doc exists` — Did the agent produce a .md file?
+- `A2: structured` — Has ≥3 markdown sections with headers
+- `A3: trade-off analysis` — Contains pros/cons, alternatives, comparisons ★ KEY METRIC
+- `A4: addresses constraints` — References requirements, limits, scale, performance
+- `A5: makes a recommendation` — Doesn't just list options — picks one with justification ★ KEY METRIC
+- `A6: reasonable length` — 30-300 lines (not a stub, not bloated)
+- `A7: no implementation code` — Stayed in architect lane (no TypeScript/code blocks)
+- `A8: failure modes` — Considers risks, fallbacks, degradation scenarios
+- `A9: fast start` — Tool call in first 800 chars
+- `A10: concise output` — Total agent output under 50KB
 
 ## Important
 

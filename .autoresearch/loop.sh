@@ -5,7 +5,7 @@
 #
 # Usage: nohup bash .autoresearch/loop.sh > .autoresearch/output.log 2>&1 &
 # Monitor: tail -f .autoresearch/output.log
-# Stop: touch .autoresearch/STOP
+# Stop: touch .autoresearch/STOP-pai-engineer (or STOP-pai-boss, etc.)
 
 set -uo pipefail
 
@@ -14,15 +14,19 @@ cd "$REPO_DIR"
 
 AR_DIR="$REPO_DIR/.autoresearch"
 EVAL_DIR="$REPO_DIR/eval"
-LOG_FILE="$AR_DIR/log.jsonl"
-BASELINE_FILE="$AR_DIR/baseline-score.txt"
-STOP_FILE="$AR_DIR/STOP"
-TRIED_FILE="$AR_DIR/tried-mutations.log"
+# Agent names use pai- prefix (pai-engineer, pai-boss, pai-architect)
+EVAL_AGENT="${EVAL_AGENT:-pai-engineer}"
+# Per-agent state files — allows parallel loops without collision
+LOG_FILE="$AR_DIR/log-${EVAL_AGENT}.jsonl"
+BASELINE_FILE="$AR_DIR/baseline-${EVAL_AGENT}.txt"
+STOP_FILE="$AR_DIR/STOP-${EVAL_AGENT}"
+TRIED_FILE="$AR_DIR/tried-${EVAL_AGENT}.log"
+STDOUT_LOG="$AR_DIR/mutator-${EVAL_AGENT}-stdout.log"
+STDERR_LOG="$AR_DIR/mutator-${EVAL_AGENT}-stderr.log"
+HYPOTHESIS_FILE="$AR_DIR/hypothesis-${EVAL_AGENT}.txt"
 MAX_EXPERIMENTS="${MAX_EXPERIMENTS:-50}"
 NO_MUTATION_STREAK=0
 MAX_NO_MUTATION_STREAK=3  # After this many no-mutations, force diversity
-# Agent names use pai- prefix (pai-engineer, pai-boss)
-EVAL_AGENT="${EVAL_AGENT:-pai-engineer}"  # pai-engineer, pai-boss, or all
 
 # Always establish baseline on first run (score <= 0)
 CURRENT_BASELINE=$(cat "$BASELINE_FILE" 2>/dev/null || echo "0.0")
@@ -48,7 +52,7 @@ echo "║  PAI Autoresearch Loop                   ║"
 echo "║  Baseline: $BASELINE_SCORE                         ║"
 echo "║  Max experiments: $MAX_EXPERIMENTS                    ║"
 echo "║  Evaluating: $EVAL_AGENT                       ║"
-echo "║  Stop: touch .autoresearch/STOP          ║"
+echo "║  Stop: touch .autoresearch/STOP-$EVAL_AGENT ║"
 echo "╚══════════════════════════════════════════╝"
 echo ""
 
@@ -105,7 +109,7 @@ Focus: the '$FOCUS_NAME' task is currently underperforming. Read the task at eva
 
 Make exactly ONE targeted mutation to $AGENT_PROMPT_FILE that you hypothesize will improve the agent's score on this task. Your mutation MUST be different from everything in the ALREADY TRIED list above.
 
-After editing the agent file, READ .autoresearch/current-hypothesis.txt first, THEN write your hypothesis to it.
+After editing the agent file, READ .autoresearch/hypothesis-${EVAL_AGENT}.txt first, THEN write your hypothesis to it.
 
 Remember: ONLY edit the markdown body of the agent file, not the YAML frontmatter. Keep the prompt SHORT (under 80 lines). You MUST make a file change — do not just read and exit. IMPORTANT: You must READ any file before you can WRITE to it."
 
@@ -113,7 +117,7 @@ Remember: ONLY edit the markdown body of the agent file, not the YAML frontmatte
     --dangerously-skip-permissions \
     --pure \
     "$MUTATE_PROMPT" \
-    >"$AR_DIR/mutator-stdout.log" 2>"$AR_DIR/mutator-stderr.log" || true
+    >"$STDOUT_LOG" 2>"$STDERR_LOG" || true
 
   # Check if anything actually changed
   if git diff --quiet config/agents/; then
@@ -124,7 +128,7 @@ Remember: ONLY edit the markdown body of the agent file, not the YAML frontmatte
   fi
   NO_MUTATION_STREAK=0  # Reset streak on successful mutation
 
-  HYPOTHESIS=$(cat "$AR_DIR/current-hypothesis.txt" 2>/dev/null || echo "unknown")
+  HYPOTHESIS=$(cat "$HYPOTHESIS_FILE" 2>/dev/null || echo "unknown")
   DIFF_SUMMARY=$(git diff --stat config/agents/ | tail -1)
   DIFF_PATCH=$(git diff config/agents/ | head -40)
   echo "  Mutation: $DIFF_SUMMARY"
@@ -157,7 +161,7 @@ Remember: ONLY edit the markdown body of the agent file, not the YAML frontmatte
       COMMIT_TYPE="lateral"
     fi
     git add config/agents/
-    git add .autoresearch/current-hypothesis.txt 2>/dev/null || true
+    git add .autoresearch/hypothesis-${EVAL_AGENT}.txt 2>/dev/null || true
     git commit -m "autoresearch: exp $EXPERIMENT score $BASELINE_SCORE→$SCORE
 
 Hypothesis: $HYPOTHESIS"
@@ -171,7 +175,7 @@ Hypothesis: $HYPOTHESIS"
   else
     echo "  [3/3] ✗ Regressed — reverting"
     git checkout -- config/agents/
-    # NOTE: Do NOT revert current-hypothesis.txt — the mutator needs to see what was last tried
+    # NOTE: Do NOT revert hypothesis file — the mutator needs to see what was last tried
 
     echo "{\"exp\":$EXPERIMENT,\"type\":\"revert\",\"score\":$SCORE,\"baseline\":$BASELINE_SCORE,\"hypothesis\":\"$HYPOTHESIS\",\"ts\":\"$(date -Iseconds)\"}" >> "$LOG_FILE"
   fi

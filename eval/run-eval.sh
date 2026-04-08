@@ -107,6 +107,17 @@ if [ "$AGENT" = "pai-boss" ] || [ "$AGENT" = "all" ]; then
   done
 fi
 
+# Run architect tasks
+if [ "$AGENT" = "pai-architect" ] || [ "$AGENT" = "all" ]; then
+  echo ""
+  echo "── pai-architect tasks (first $MAX_TASKS) ──"
+  TASK_COUNT=0
+  for task in $(ls "$EVAL_DIR/tasks/architect/"*.txt 2>/dev/null | sort | head -"$MAX_TASKS"); do
+    [ -f "$task" ] && run_task "pai-architect" "$task"
+    TASK_COUNT=$((TASK_COUNT + 1))
+  done
+fi
+
 # Aggregate score
 if [ "$TOTAL_TASKS" -gt 0 ]; then
   AGG_SCORE=$(awk "BEGIN {printf \"%.4f\", $TOTAL_SCORE / $TOTAL_TASKS}")
