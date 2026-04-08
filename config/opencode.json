@@ -37,21 +37,16 @@
     "todoread": "allow",
     "todowrite": "allow",
     "question": "allow",
+    "write": "allow",
     "bash": {
-      "*": "ask",
-      "git status*": "allow",
-      "git diff*": "allow",
-      "git log*": "allow",
-      "git branch*": "allow",
-      "git remote*": "allow",
-      "ls*": "allow",
-      "rm -rf*": "deny"
+      "*": "allow",
+      "rm -rf /workspace/repos/*": "deny",
+      "rm -rf /home/*": "deny"
     },
     "edit": {
       "*.env": "deny",
       "*.env.*": "deny",
-      "*.env.example": "allow",
-      "*": "ask"
+      "*": "allow"
     }
   },
   "compaction": { "auto": true, "prune": true },
