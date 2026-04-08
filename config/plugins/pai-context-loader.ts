@@ -1,9 +1,9 @@
-import type { Plugin } from "@opencode-ai/plugin"
+import type { Plugin, PluginModule } from "@opencode-ai/plugin"
 import { readFileSync, existsSync } from "fs"
 import { join } from "path"
-import { log } from "./pai-log"
+import { log } from "./lib/pai-log"
 
-export const PAIContextLoader: Plugin = async ({ directory }) => {
+const server: Plugin = async ({ directory }) => {
   const contextDir = join(process.env.HOME || "", ".config/opencode/pai/context")
 
   return {
@@ -11,19 +11,16 @@ export const PAIContextLoader: Plugin = async ({ directory }) => {
       if (event.type === "session.created") {
         const contexts: string[] = []
 
-        // Load user profile if exists
         const userProfile = join(contextDir, "user/profile.md")
         if (existsSync(userProfile)) {
           contexts.push(`[User Profile loaded: ${userProfile}]`)
         }
 
-        // Load DA identity if exists
         const daIdentity = join(contextDir, "da/identity.md")
         if (existsSync(daIdentity)) {
           contexts.push(`[DA Identity loaded: ${daIdentity}]`)
         }
 
-        // Load steering rules if exists
         const steeringRules = join(contextDir, "steering-rules.md")
         if (existsSync(steeringRules)) {
           contexts.push(`[Steering Rules loaded: ${steeringRules}]`)
@@ -38,3 +35,5 @@ export const PAIContextLoader: Plugin = async ({ directory }) => {
     },
   }
 }
+
+export default { server } satisfies PluginModule

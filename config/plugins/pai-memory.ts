@@ -1,7 +1,7 @@
-import type { Plugin } from "@opencode-ai/plugin"
+import type { Plugin, PluginModule } from "@opencode-ai/plugin"
 import { readFileSync, writeFileSync, appendFileSync, existsSync, mkdirSync } from "fs"
 import { join, basename } from "path"
-import { log, logError } from "./pai-log"
+import { log, logError } from "./lib/pai-log"
 
 const PAI_DIR = join(process.env.HOME || "", ".config/opencode/pai")
 const MEMORY_DIR = join(PAI_DIR, "memory")
@@ -25,12 +25,11 @@ function parseYamlFrontmatter(content: string): Record<string, string> {
   return result
 }
 
-export const PAIMemory: Plugin = async ({ $ }) => {
+const server: Plugin = async ({ $ }) => {
   ensureDir(STATE_DIR)
   ensureDir(SIGNALS_DIR)
 
   return {
-    // Track PRD writes — sync state when PRD.md is created or updated
     "tool.execute.after": async (input, output) => {
       if (input.tool !== "write" && input.tool !== "edit") return
 
@@ -61,17 +60,14 @@ export const PAIMemory: Plugin = async ({ $ }) => {
           log("memory", `PRD synced: ${state.task} (${state.phase}, ${state.progress})`)
         }
       } catch (e) {
-        // Graceful fail — don't break the session
         logError("memory", "PRD sync error", e)
       }
     },
 
-    // Capture ratings from chat messages
     "chat.message": async (input, output) => {
       const message = (input as any).message?.content || ""
       if (typeof message !== "string") return
 
-      // Detect rating patterns: "8/10", "rate: 9", "rating: 7"
       const ratingMatch = message.match(/(?:rate|rating)[:\s]*(\d{1,2})(?:\/10)?/i) ||
                           message.match(/(\d{1,2})\/10/)
 
@@ -93,3 +89,5 @@ export const PAIMemory: Plugin = async ({ $ }) => {
     },
   }
 }
+
+export default { server } satisfies PluginModule
