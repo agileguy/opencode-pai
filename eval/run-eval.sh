@@ -6,7 +6,7 @@
 set -uo pipefail
 
 EVAL_DIR="$(cd "$(dirname "$0")" && pwd)"
-AGENT="${1:-all}"
+AGENT="${1:-all}"  # pai-engineer, pai-boss, or all
 TIMEOUT=300  # 5 min per task
 TOTAL_SCORE=0
 TOTAL_TASKS=0
@@ -64,7 +64,7 @@ echo "Time: $(date)"
 echo "Results: $RESULTS_DIR"
 
 # Run engineer tasks
-if [ "$AGENT" = "engineer" ] || [ "$AGENT" = "all" ]; then
+if [ "$AGENT" = "pai-engineer" ] || [ "$AGENT" = "all" ]; then
   echo ""
   echo "── pai-engineer tasks ──"
   for task in "$EVAL_DIR/tasks/engineer/"*.txt; do
@@ -73,7 +73,7 @@ if [ "$AGENT" = "engineer" ] || [ "$AGENT" = "all" ]; then
 fi
 
 # Run boss tasks
-if [ "$AGENT" = "boss" ] || [ "$AGENT" = "all" ]; then
+if [ "$AGENT" = "pai-boss" ] || [ "$AGENT" = "all" ]; then
   echo ""
   echo "── pai-boss tasks ──"
   for task in "$EVAL_DIR/tasks/boss/"*.txt; do

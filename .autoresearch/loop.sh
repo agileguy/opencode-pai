@@ -18,12 +18,17 @@ LOG_FILE="$AR_DIR/log.jsonl"
 BASELINE_FILE="$AR_DIR/baseline-score.txt"
 STOP_FILE="$AR_DIR/STOP"
 MAX_EXPERIMENTS="${MAX_EXPERIMENTS:-50}"
-EVAL_AGENT="${EVAL_AGENT:-engineer}"  # engineer, boss, or all
+# Agent names use pai- prefix (pai-engineer, pai-boss)
+EVAL_AGENT="${EVAL_AGENT:-pai-engineer}"  # pai-engineer, pai-boss, or all
 
-# Initialize baseline if needed
-if [ ! -f "$BASELINE_FILE" ]; then
+# Always establish baseline on first run (score <= 0)
+CURRENT_BASELINE=$(cat "$BASELINE_FILE" 2>/dev/null || echo "0.0")
+if [ "$CURRENT_BASELINE" = "0.0" ] || [ "$CURRENT_BASELINE" = "0" ]; then
   echo "=== Establishing baseline ==="
+  # Map agent name to task dir (pai-engineer -> engineer)
+  TASK_DIR_NAME="${EVAL_AGENT#pai-}"
   BASELINE=$(bash "$EVAL_DIR/run-eval.sh" "$EVAL_AGENT" 2>&1 | tail -1)
+  if ! echo "$BASELINE" | grep -qE '^[0-9]'; then BASELINE="0.0"; fi
   echo "$BASELINE" > "$BASELINE_FILE"
   echo "{\"type\":\"baseline\",\"score\":$BASELINE,\"ts\":\"$(date -Iseconds)\"}" >> "$LOG_FILE"
   echo "Baseline score: $BASELINE"
@@ -61,11 +66,15 @@ while [ "$EXPERIMENT" -lt "$MAX_EXPERIMENTS" ]; do
   echo "  [1/3] Mutating prompt..."
 
   # Pick a random task to focus the mutation on
-  FOCUS_TASK=$(ls "$EVAL_DIR/tasks/$EVAL_AGENT/"*.txt 2>/dev/null | shuf -n 1)
+  TASK_DIR_NAME="${EVAL_AGENT#pai-}"
+  FOCUS_TASK=$(ls "$EVAL_DIR/tasks/$TASK_DIR_NAME/"*.txt 2>/dev/null | sort -R | head -1)
   FOCUS_NAME=$(basename "$FOCUS_TASK" .txt 2>/dev/null || echo "general")
 
   # Get last 5 results for context
-  RECENT=$(tail -5 "$LOG_FILE" 2>/dev/null || echo "[]")
+  RECENT=$(tail -5 "$LOG_FILE" 2>/dev/null || echo "no previous experiments")
+
+  # Agent prompt file path
+  AGENT_PROMPT_FILE="config/agents/${EVAL_AGENT}.md"
 
   MUTATE_PROMPT="You are the PAI Autoresearch mutator. Read .autoresearch/program.md for full instructions.
 
@@ -73,9 +82,9 @@ Current baseline score: $BASELINE_SCORE
 Recent experiment log:
 $RECENT
 
-Focus: the '$FOCUS_NAME' task is currently underperforming. Read the task at eval/tasks/$EVAL_AGENT/$FOCUS_NAME.txt, then read the current agent prompt at config/agents/$EVAL_AGENT.md.
+Focus: the '$FOCUS_NAME' task is currently underperforming. Read the task at eval/tasks/$TASK_DIR_NAME/$FOCUS_NAME.txt, then read the current agent prompt at $AGENT_PROMPT_FILE.
 
-Make exactly ONE targeted mutation to config/agents/$EVAL_AGENT.md that you hypothesize will improve the agent's score on this task. Write your hypothesis to .autoresearch/current-hypothesis.txt.
+Make exactly ONE targeted mutation to $AGENT_PROMPT_FILE that you hypothesize will improve the agent's score on this task. Write your hypothesis to .autoresearch/current-hypothesis.txt.
 
 Remember: ONLY edit the markdown body of the agent file, not the YAML frontmatter. Keep the prompt SHORT (under 80 lines)."
 

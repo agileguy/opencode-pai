@@ -16,7 +16,7 @@ fail() { TOTAL=$((TOTAL + 1)); echo "  FAIL: $1"; }
 
 echo "Checking metrics for $AGENT/$TASK in $OUTPUT_DIR"
 
-if [ "$AGENT" = "pai-engineer" ]; then
+if [ "$AGENT" = "pai-engineer" ] || [ "$AGENT" = "engineer" ]; then
   # 1. File created — any .ts file in output dir (not test)
   IMPL_FILES=$(find "$OUTPUT_DIR" -name "*.ts" ! -name "*.test.ts" ! -name "*.spec.ts" 2>/dev/null | head -1)
   if [ -n "$IMPL_FILES" ]; then pass "file_created"; else fail "file_created"; fi
@@ -79,7 +79,7 @@ if [ "$AGENT" = "pai-engineer" ]; then
   FILE_COUNT=$(find "$OUTPUT_DIR" -name "*.ts" 2>/dev/null | wc -l)
   if [ "$FILE_COUNT" -le 5 ] && [ "$FILE_COUNT" -ge 1 ]; then pass "fast_start"; else fail "fast_start"; fi
 
-elif [ "$AGENT" = "pai-boss" ]; then
+elif [ "$AGENT" = "pai-boss" ] || [ "$AGENT" = "boss" ]; then
   # 1. Delegation occurred — check for any output files (evidence of subagent work)
   ANY_FILES=$(find "$OUTPUT_DIR" -name "*.ts" 2>/dev/null | head -1)
   DELEGATION_LOG="$OUTPUT_DIR/.delegation-log.txt"
