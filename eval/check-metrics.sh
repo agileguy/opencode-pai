@@ -278,7 +278,8 @@ elif echo "$AGENT" | grep -q "architect"; then
 
   # A7. No implementation code (stayed in architect lane)
   if [ -n "$DOC_CONTENT" ]; then
-    CODE_BLOCKS=$(echo "$DOC_CONTENT" | grep -cE "^(import |const |function |class |export |let |var |async )" 2>/dev/null || echo 0)
+    CODE_BLOCKS=$(echo "$DOC_CONTENT" | grep -cE "^(import |const |function |class |export |let |var |async )" 2>/dev/null | tr -d '[:space:]' || echo 0)
+    [ -z "$CODE_BLOCKS" ] && CODE_BLOCKS=0
     [ "$CODE_BLOCKS" -le 2 ] && pass "A7: no implementation code" || fail "A7: contains implementation code ($CODE_BLOCKS lines)"
   else
     fail "A7: no implementation code"
@@ -295,7 +296,8 @@ elif echo "$AGENT" | grep -q "architect"; then
   echo "── Speed Metrics ──"
 
   # A9. Fast start (tool call in first 800 chars)
-  FIRST_TOOL=$(echo "$STDOUT_CLEAN" | head -c 800 | grep -ciE "→.*Read|→.*Write|→.*Bash" 2>/dev/null || echo 0)
+  FIRST_TOOL=$(echo "$STDOUT_CLEAN" | head -c 800 | grep -ciE "→.*Read|→.*Write|→.*Bash" 2>/dev/null | tr -d '[:space:]' || echo 0)
+  [ -z "$FIRST_TOOL" ] && FIRST_TOOL=0
   [ "$FIRST_TOOL" -ge 1 ] && pass "A9: fast start" || fail "A9: slow start"
 
   # A10. Concise agent output
