@@ -17,7 +17,10 @@ EVAL_DIR="$REPO_DIR/eval"
 LOG_FILE="$AR_DIR/log.jsonl"
 BASELINE_FILE="$AR_DIR/baseline-score.txt"
 STOP_FILE="$AR_DIR/STOP"
+TRIED_FILE="$AR_DIR/tried-mutations.log"
 MAX_EXPERIMENTS="${MAX_EXPERIMENTS:-50}"
+NO_MUTATION_STREAK=0
+MAX_NO_MUTATION_STREAK=3  # After this many no-mutations, force diversity
 # Agent names use pai- prefix (pai-engineer, pai-boss)
 EVAL_AGENT="${EVAL_AGENT:-pai-engineer}"  # pai-engineer, pai-boss, or all
 
@@ -73,20 +76,36 @@ while [ "$EXPERIMENT" -lt "$MAX_EXPERIMENTS" ]; do
   # Get last 5 results for context
   RECENT=$(tail -5 "$LOG_FILE" 2>/dev/null || echo "no previous experiments")
 
+  # Get tried mutations history (last 10 for context, avoid repeats)
+  TRIED=$(tail -10 "$TRIED_FILE" 2>/dev/null || echo "none yet")
+
   # Agent prompt file path
   AGENT_PROMPT_FILE="config/agents/${EVAL_AGENT}.md"
+
+  # Build diversity nudge if we're in a no-mutation streak
+  DIVERSITY_HINT=""
+  if [ "$NO_MUTATION_STREAK" -ge "$MAX_NO_MUTATION_STREAK" ]; then
+    DIVERSITY_HINT="
+IMPORTANT: The last $NO_MUTATION_STREAK attempts produced NO mutation. You MUST make a change this time.
+Try a completely DIFFERENT strategy — reorder sections, remove verbose instructions, add a concrete example,
+change the TDD workflow description, or simplify the prompt. Do NOT repeat anything from the tried list below."
+  fi
 
   MUTATE_PROMPT="You are the PAI Autoresearch mutator. Read .autoresearch/program.md for full instructions.
 
 Current baseline score: $BASELINE_SCORE
+Experiment: $EXPERIMENT / $MAX_EXPERIMENTS
 Recent experiment log:
 $RECENT
 
+ALREADY TRIED (do NOT repeat these — try something DIFFERENT):
+$TRIED
+$DIVERSITY_HINT
 Focus: the '$FOCUS_NAME' task is currently underperforming. Read the task at eval/tasks/$TASK_DIR_NAME/$FOCUS_NAME.txt, then read the current agent prompt at $AGENT_PROMPT_FILE.
 
-Make exactly ONE targeted mutation to $AGENT_PROMPT_FILE that you hypothesize will improve the agent's score on this task. Write your hypothesis to .autoresearch/current-hypothesis.txt.
+Make exactly ONE targeted mutation to $AGENT_PROMPT_FILE that you hypothesize will improve the agent's score on this task. Your mutation MUST be different from everything in the ALREADY TRIED list above. Write your hypothesis to .autoresearch/current-hypothesis.txt.
 
-Remember: ONLY edit the markdown body of the agent file, not the YAML frontmatter. Keep the prompt SHORT (under 80 lines)."
+Remember: ONLY edit the markdown body of the agent file, not the YAML frontmatter. Keep the prompt SHORT (under 80 lines). You MUST make a file change — do not just read and exit."
 
   timeout 180 opencode run \
     --dangerously-skip-permissions \
@@ -97,14 +116,20 @@ Remember: ONLY edit the markdown body of the agent file, not the YAML frontmatte
   # Check if anything actually changed
   if git diff --quiet config/agents/; then
     echo "  No mutation made — skipping eval"
-    echo "{\"exp\":$EXPERIMENT,\"type\":\"no_mutation\",\"ts\":\"$(date -Iseconds)\"}" >> "$LOG_FILE"
+    NO_MUTATION_STREAK=$((NO_MUTATION_STREAK + 1))
+    echo "{\"exp\":$EXPERIMENT,\"type\":\"no_mutation\",\"streak\":$NO_MUTATION_STREAK,\"ts\":\"$(date -Iseconds)\"}" >> "$LOG_FILE"
     continue
   fi
+  NO_MUTATION_STREAK=0  # Reset streak on successful mutation
 
   HYPOTHESIS=$(cat "$AR_DIR/current-hypothesis.txt" 2>/dev/null || echo "unknown")
-  DIFF_STAT=$(git diff --stat config/agents/ | tail -1)
-  echo "  Mutation: $DIFF_STAT"
+  DIFF_SUMMARY=$(git diff --stat config/agents/ | tail -1)
+  DIFF_PATCH=$(git diff config/agents/ | head -40)
+  echo "  Mutation: $DIFF_SUMMARY"
   echo "  Hypothesis: $HYPOTHESIS"
+
+  # Log this mutation attempt to tried-mutations (so future experiments avoid repeats)
+  echo "--- Exp $EXPERIMENT: $HYPOTHESIS | Diff: $DIFF_SUMMARY" >> "$TRIED_FILE"
 
   # 2. EVALUATE — Run eval suite
   echo "  [2/3] Running eval suite..."
@@ -118,24 +143,33 @@ Remember: ONLY edit the markdown body of the agent file, not the YAML frontmatte
   echo "  Score: $SCORE (baseline: $BASELINE_SCORE)"
 
   # 3. DECIDE — Keep or revert
-  IMPROVED=$(awk "BEGIN {print ($SCORE > $BASELINE_SCORE) ? 1 : 0}")
+  # Use >= so lateral moves (same score) are kept — they change strategy without regressing
+  DOMINATED=$(awk "BEGIN {print ($SCORE < $BASELINE_SCORE) ? 1 : 0}")
 
-  if [ "$IMPROVED" = "1" ]; then
-    echo "  [3/3] ✓ IMPROVED — committing"
+  if [ "$DOMINATED" = "0" ]; then
+    if [ "$(awk "BEGIN {print ($SCORE > $BASELINE_SCORE) ? 1 : 0}")" = "1" ]; then
+      echo "  [3/3] ✓ IMPROVED — committing"
+      COMMIT_TYPE="improvement"
+    else
+      echo "  [3/3] ≈ LATERAL — committing (same score, new strategy)"
+      COMMIT_TYPE="lateral"
+    fi
     git add config/agents/
     git add .autoresearch/current-hypothesis.txt 2>/dev/null || true
     git commit -m "autoresearch: exp $EXPERIMENT score $BASELINE_SCORE→$SCORE
 
 Hypothesis: $HYPOTHESIS"
-    BASELINE_SCORE="$SCORE"
-    echo "$SCORE" > "$BASELINE_FILE"
-    IMPROVEMENTS=$((IMPROVEMENTS + 1))
+    if [ "$COMMIT_TYPE" = "improvement" ]; then
+      BASELINE_SCORE="$SCORE"
+      echo "$SCORE" > "$BASELINE_FILE"
+      IMPROVEMENTS=$((IMPROVEMENTS + 1))
+    fi
 
-    echo "{\"exp\":$EXPERIMENT,\"type\":\"improvement\",\"score\":$SCORE,\"prev\":$BASELINE_SCORE,\"hypothesis\":\"$HYPOTHESIS\",\"ts\":\"$(date -Iseconds)\"}" >> "$LOG_FILE"
+    echo "{\"exp\":$EXPERIMENT,\"type\":\"$COMMIT_TYPE\",\"score\":$SCORE,\"prev\":$BASELINE_SCORE,\"hypothesis\":\"$HYPOTHESIS\",\"ts\":\"$(date -Iseconds)\"}" >> "$LOG_FILE"
   else
     echo "  [3/3] ✗ Regressed — reverting"
     git checkout -- config/agents/
-    git checkout -- .autoresearch/current-hypothesis.txt 2>/dev/null || true
+    # NOTE: Do NOT revert current-hypothesis.txt — the mutator needs to see what was last tried
 
     echo "{\"exp\":$EXPERIMENT,\"type\":\"revert\",\"score\":$SCORE,\"baseline\":$BASELINE_SCORE,\"hypothesis\":\"$HYPOTHESIS\",\"ts\":\"$(date -Iseconds)\"}" >> "$LOG_FILE"
   fi
