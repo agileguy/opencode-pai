@@ -88,9 +88,9 @@ echo "Results: $RESULTS_DIR"
 # Run engineer tasks
 if [ "$AGENT" = "pai-engineer" ] || [ "$AGENT" = "all" ]; then
   echo ""
-  echo "── pai-engineer tasks (max $MAX_TASKS) ──"
+  echo "── pai-engineer tasks (first $MAX_TASKS) ──"
   TASK_COUNT=0
-  for task in $(ls "$EVAL_DIR/tasks/engineer/"*.txt 2>/dev/null | sort -R | head -"$MAX_TASKS"); do
+  for task in $(ls "$EVAL_DIR/tasks/engineer/"*.txt 2>/dev/null | sort | head -"$MAX_TASKS"); do
     [ -f "$task" ] && run_task "pai-engineer" "$task"
     TASK_COUNT=$((TASK_COUNT + 1))
   done
@@ -99,9 +99,11 @@ fi
 # Run boss tasks
 if [ "$AGENT" = "pai-boss" ] || [ "$AGENT" = "all" ]; then
   echo ""
-  echo "── pai-boss tasks (max $MAX_TASKS) ──"
-  for task in $(ls "$EVAL_DIR/tasks/boss/"*.txt 2>/dev/null | sort -R | head -"$MAX_TASKS"); do
+  echo "── pai-boss tasks (first $MAX_TASKS) ──"
+  TASK_COUNT=0
+  for task in $(ls "$EVAL_DIR/tasks/boss/"*.txt 2>/dev/null | sort | head -"$MAX_TASKS"); do
     [ -f "$task" ] && run_task "pai-boss" "$task"
+    TASK_COUNT=$((TASK_COUNT + 1))
   done
 fi
 
