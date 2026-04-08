@@ -26,6 +26,14 @@ echo "  OpenCode: $(opencode --version 2>/dev/null || echo 'not found')"
 echo "  gh      : $(gh --version 2>/dev/null | head -1 || echo 'not found')"
 echo ""
 
+# Install plugin dependencies (config dir is bind-mounted, node_modules may not exist)
+OPENCODE_CONFIG="/home/developer/.config/opencode"
+if [ -f "$OPENCODE_CONFIG/package.json" ] && [ ! -d "$OPENCODE_CONFIG/node_modules" ]; then
+    echo "Installing OpenCode plugin dependencies..."
+    cd "$OPENCODE_CONFIG" && npm install --silent 2>/dev/null || true
+    cd /workspace
+fi
+
 # Validate OMLX_API_KEY
 if [ -z "${OMLX_API_KEY:-}" ]; then
     echo "WARNING: OMLX_API_KEY is not set. oMLX provider will not authenticate."
