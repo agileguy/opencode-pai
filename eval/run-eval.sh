@@ -45,11 +45,21 @@ run_task() {
     >"$output_dir/.stdout.log" \
     || true
 
-  # Also scan common alternative locations and move files if needed
-  for alt_dir in /workspace/eval/output/"$(echo "$task_name" | sed 's/^[0-9]*-//')" /workspace/"$(echo "$task_name" | sed 's/^[0-9]*-//')"; do
+  # Scan for files the agent may have created in alternative locations
+  local short_name="$(echo "$task_name" | sed 's/^[0-9]*-//')"
+  for alt_dir in \
+    "/workspace/eval/output/$short_name" \
+    "/workspace/$short_name" \
+    "/workspace/eval/output/${agent}-${short_name}" \
+    "/workspace/output/$short_name"; do
     if [ -d "$alt_dir" ] && [ "$alt_dir" != "$output_dir" ]; then
+      echo "  Found files in $alt_dir — copying to $output_dir"
       cp -a "$alt_dir"/* "$output_dir/" 2>/dev/null || true
     fi
+  done
+  # Also find any .ts files created anywhere under /workspace/eval/output that match
+  find /workspace/eval/output -maxdepth 2 -name "*.ts" -newer "$output_dir/.stderr.log" 2>/dev/null | while read f; do
+    cp -n "$f" "$output_dir/" 2>/dev/null || true
   done
 
   # Check metrics
