@@ -1,0 +1,1 @@
+Create a TypeScript generic Stack<T> class with push(item: T), pop(): T | undefined, peek(): T | undefined, size(): number, and isEmpty(): boolean methods. Use TDD — write the test file first, then the implementation. Save test to /workspace/eval/output/stack/stack.test.ts and implementation to /workspace/eval/output/stack/stack.ts

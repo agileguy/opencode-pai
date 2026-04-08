@@ -1,0 +1,1 @@
+Create a TypeScript function debounce(fn: Function, ms: number): Function that delays invoking fn until ms milliseconds after the last call. Use TDD — write the test file first, then the implementation. Save test to /workspace/eval/output/debounce/debounce.test.ts and implementation to /workspace/eval/output/debounce/debounce.ts

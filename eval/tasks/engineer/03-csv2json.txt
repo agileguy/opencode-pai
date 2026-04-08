@@ -1,0 +1,1 @@
+Create a TypeScript function csvToJson(csv: string): object[] that parses a CSV string (with header row) into an array of objects. Handle quoted fields with commas inside them. Use TDD — write the test file first, then the implementation. Save test to /workspace/eval/output/csv2json/csvToJson.test.ts and implementation to /workspace/eval/output/csv2json/csvToJson.ts

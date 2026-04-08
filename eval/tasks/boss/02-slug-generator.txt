@@ -1,0 +1,1 @@
+Build a URL slug generator TypeScript module with tests. The module should export a function slugify(title: string): string that converts titles to URL-safe slugs. Delegate the implementation work to the appropriate PAI agent. Output should be saved to /workspace/eval/output/boss-slug/

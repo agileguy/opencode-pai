@@ -1,0 +1,1 @@
+Fix the bugs in /workspace/eval/fixtures/broken-sort.ts. There are two bugs: (1) it crashes when objects have missing keys, (2) it uses string comparison for numbers instead of numeric comparison. Write a regression test that catches both bugs. Save the fixed file to /workspace/eval/output/fix-sort/sortBy.ts and tests to /workspace/eval/output/fix-sort/sortBy.test.ts

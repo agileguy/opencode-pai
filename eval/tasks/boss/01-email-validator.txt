@@ -1,0 +1,1 @@
+Build an email validator TypeScript module with tests. The module should export a function validateEmail(email: string): boolean. Delegate the implementation work to the appropriate PAI agent. Output should be saved to /workspace/eval/output/boss-email/
