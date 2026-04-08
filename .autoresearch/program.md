@@ -48,23 +48,39 @@ Agent prompt files in `config/agents/`. Each file defines how a PAI agent behave
 
 ## Metric Definitions (so you know what to optimize for)
 
-### pai-engineer metrics:
-- `file_created` — Did the agent create the output file? (agents often talk about code instead of writing it)
-- `valid_syntax` — Does the TypeScript compile? (agents hallucinate imports)
-- `tests_exist` — Did the agent write test files? (agents skip tests despite TDD instructions)
-- `tests_pass` — Do the tests actually pass?
-- `no_hallucinated_imports` — Are all imports resolvable?
-- `used_tools` — Did the agent use write/edit tools? (critical — agents that only output text score 0)
-- `tdd_order` — Was the test written before the implementation?
-- `fast_start` — Did the agent start tool calls quickly instead of verbose planning?
+There are 16 metrics across 3 categories. Current weak areas are marked with ★.
+
+### EXECUTION metrics (do the basics work?):
+- `E1: impl file exists` — Did the agent create the implementation file?
+- `E2: test file exists` — Did the agent create a test file?
+- `E3: tests pass` — Do tests actually pass when run with `bun test`? ★ HARD
+- `E4: ≥3 test cases` — Are there at least 3 distinct test cases?
+- `E5: ≥3 assertions` — Are there at least 3 expect/assert calls?
+- `E6: has export` — Is the function exported (usable as a module)?
+
+### QUALITY metrics (is the code good?):
+- `Q1: no 'any' types` — No TypeScript `any` type usage ★ COMMON FAILURE
+- `Q2: clean imports` — No hallucinated npm package imports
+- `Q3: error handling` — Has try/catch, throw, or null checks
+- `Q4: edge cases tested` — Tests cover empty, null, boundary cases ★ COMMON FAILURE
+- `Q5: typed signatures` — Functions have type annotations
+- `Q6: reasonable size` — 5-150 lines (not bloated or trivially empty)
+- `Q7: test imports impl` — Test file imports the implementation
+
+### SPEED metrics (is the agent efficient?):
+- `S1: used tools` — Agent used write/edit tools (not just text output)
+- `S2: fast start` — First tool call within first 800 chars (no verbose preamble) ★ COMMON FAILURE
+- `S3: concise output` — Total output under 50KB
+- `S4: completed` — Both impl and test files exist (didn't timeout)
+- `S5: TDD order` — Test file created before implementation file
 
 ### pai-boss metrics:
-- `delegated` — Did the boss use the Task tool to delegate?
-- `correct_agent` — Was the right specialist agent chosen?
-- `output_exists` — Did the delegated work produce a file?
-- `no_self_impl` — Boss didn't write code directly?
-- `specific_brief` — Delegation prompt was specific with file paths?
-- `completed` — Finished within step limit?
+- `D1: delegation` — Task tool called with PAI agent
+- `D2: correct routing` — pai-engineer selected for code tasks
+- `D3: output exists` — Delegated work produced files
+- `D4: no self-impl` — Boss didn't write code directly
+- `D5: within limits` — Completed without hitting step limit
+- `D6: specific brief` — Delegation included file paths
 
 ## Important
 

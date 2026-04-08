@@ -1,0 +1,1 @@
+Create a TypeScript singly linked list with methods: append(value: T), prepend(value: T), delete(value: T): boolean, find(value: T): Node<T> | null, toArray(): T[], and size(): number. Include proper generic typing. Use TDD — write the test file first with at least 8 test cases covering empty list, single element, duplicates, and not-found scenarios.

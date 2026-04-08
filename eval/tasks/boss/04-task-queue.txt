@@ -1,0 +1,1 @@
+Build a TypeScript in-memory task queue with: enqueue(task), dequeue(), peek(), size(), and a process(handler) method that runs tasks through a handler function sequentially. Include error handling for failed tasks. Delegate to the appropriate PAI agent.

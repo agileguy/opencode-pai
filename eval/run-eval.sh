@@ -8,6 +8,7 @@ set -uo pipefail
 EVAL_DIR="$(cd "$(dirname "$0")" && pwd)"
 AGENT="${1:-all}"  # pai-engineer, pai-boss, or all
 TIMEOUT=300  # 5 min per task
+MAX_TASKS="${MAX_TASKS:-3}"  # Limit tasks per eval run for speed
 TOTAL_SCORE=0
 TOTAL_TASKS=0
 RESULTS_DIR="$EVAL_DIR/results/$(date +%Y%m%d-%H%M%S)"
@@ -87,17 +88,19 @@ echo "Results: $RESULTS_DIR"
 # Run engineer tasks
 if [ "$AGENT" = "pai-engineer" ] || [ "$AGENT" = "all" ]; then
   echo ""
-  echo "── pai-engineer tasks ──"
-  for task in "$EVAL_DIR/tasks/engineer/"*.txt; do
+  echo "── pai-engineer tasks (max $MAX_TASKS) ──"
+  TASK_COUNT=0
+  for task in $(ls "$EVAL_DIR/tasks/engineer/"*.txt 2>/dev/null | sort -R | head -"$MAX_TASKS"); do
     [ -f "$task" ] && run_task "pai-engineer" "$task"
+    TASK_COUNT=$((TASK_COUNT + 1))
   done
 fi
 
 # Run boss tasks
 if [ "$AGENT" = "pai-boss" ] || [ "$AGENT" = "all" ]; then
   echo ""
-  echo "── pai-boss tasks ──"
-  for task in "$EVAL_DIR/tasks/boss/"*.txt; do
+  echo "── pai-boss tasks (max $MAX_TASKS) ──"
+  for task in $(ls "$EVAL_DIR/tasks/boss/"*.txt 2>/dev/null | sort -R | head -"$MAX_TASKS"); do
     [ -f "$task" ] && run_task "pai-boss" "$task"
   done
 fi

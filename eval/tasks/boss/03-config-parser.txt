@@ -1,0 +1,1 @@
+Build a TypeScript config file parser module that reads .env-style config files (KEY=VALUE format, supporting comments with #, quoted values, and multiline values with \). Include comprehensive tests. Delegate to the appropriate PAI agent.
