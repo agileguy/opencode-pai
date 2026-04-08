@@ -34,6 +34,12 @@ if [ -f "$OPENCODE_CONFIG/package.json" ] && [ ! -d "$OPENCODE_CONFIG/node_modul
     cd /workspace
 fi
 
+# Initialize /workspace as a git repo if not already (OpenCode uses git root as project boundary)
+if [ ! -d /workspace/.git ]; then
+    cd /workspace && git init --quiet && git add -A 2>/dev/null && git commit -m "init" --quiet 2>/dev/null || true
+    cd /workspace
+fi
+
 # Validate OMLX_API_KEY
 if [ -z "${OMLX_API_KEY:-}" ]; then
     echo "WARNING: OMLX_API_KEY is not set. oMLX provider will not authenticate."

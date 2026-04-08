@@ -19,6 +19,7 @@ services:
       - OMLX_BASE_URL=http://host.docker.internal:8000/v1
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - GOOGLE_GENERATIVE_AI_API_KEY=${GOOGLE_GENERATIVE_AI_API_KEY}
+      - OPENCODE_YOLO=1
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
