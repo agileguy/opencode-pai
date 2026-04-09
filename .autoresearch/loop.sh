@@ -28,6 +28,14 @@ MAX_EXPERIMENTS="${MAX_EXPERIMENTS:-50}"
 NO_MUTATION_STREAK=0
 MAX_NO_MUTATION_STREAK=3  # After this many no-mutations, force diversity
 
+# Adaptive early stopping — replace fixed limit with plateau detection
+PLATEAU_COUNTER=0
+PLATEAU_THRESHOLD=10   # Stop after 10 consecutive non-improvements
+MIN_EXPERIMENTS=10     # Always run at least 10
+
+# Checkpoint file for resume support
+CHECKPOINT_FILE="$AR_DIR/checkpoint-${EVAL_AGENT}.json"
+
 # Mutation strategies — round-robin rotation
 STRATEGIES=(
   "remove_verbose"
@@ -39,6 +47,13 @@ STRATEGIES=(
   "remove_last_added"
 )
 STRATEGY_INDEX=0
+
+# Save loop state to checkpoint file for resume support
+save_checkpoint() {
+  cat > "$CHECKPOINT_FILE" << CKPT
+{"agent":"$EVAL_AGENT","experiment":$EXPERIMENT,"baseline":"$BASELINE_SCORE","improvements":$IMPROVEMENTS,"strategy_index":$STRATEGY_INDEX,"plateau_counter":$PLATEAU_COUNTER,"ts":"$(date -Iseconds)"}
+CKPT
+}
 
 # Get latest per-task results for failure analysis
 get_failure_analysis() {
@@ -90,6 +105,23 @@ BASELINE_SCORE=$(cat "$BASELINE_FILE")
 EXPERIMENT=0
 IMPROVEMENTS=0
 START_TIME=$(date +%s)
+
+# Resume from checkpoint if available
+if [ -f "$CHECKPOINT_FILE" ] && [ "$CURRENT_BASELINE" != "0.0" ]; then
+  CKPT_EXP=$(python3 -c "import json; print(json.load(open('$CHECKPOINT_FILE'))['experiment'])" 2>/dev/null || echo 0)
+  CKPT_BASELINE=$(python3 -c "import json; print(json.load(open('$CHECKPOINT_FILE'))['baseline'])" 2>/dev/null || echo "0.0")
+  CKPT_IMPROVEMENTS=$(python3 -c "import json; print(json.load(open('$CHECKPOINT_FILE'))['improvements'])" 2>/dev/null || echo 0)
+  CKPT_STRATEGY=$(python3 -c "import json; print(json.load(open('$CHECKPOINT_FILE'))['strategy_index'])" 2>/dev/null || echo 0)
+  CKPT_PLATEAU=$(python3 -c "import json; print(json.load(open('$CHECKPOINT_FILE'))['plateau_counter'])" 2>/dev/null || echo 0)
+  if [ "$CKPT_EXP" -gt 0 ]; then
+    echo "Resuming from checkpoint: experiment $CKPT_EXP, baseline $CKPT_BASELINE, $CKPT_IMPROVEMENTS improvements"
+    EXPERIMENT=$CKPT_EXP
+    BASELINE_SCORE="$CKPT_BASELINE"
+    IMPROVEMENTS=$CKPT_IMPROVEMENTS
+    STRATEGY_INDEX=$CKPT_STRATEGY
+    PLATEAU_COUNTER=$CKPT_PLATEAU
+  fi
+fi
 
 echo ""
 echo "╔══════════════════════════════════════════╗"
@@ -246,6 +278,9 @@ Hypothesis: $HYPOTHESIS"
       BASELINE_SCORE="$SCORE"
       echo "$SCORE" > "$BASELINE_FILE"
       IMPROVEMENTS=$((IMPROVEMENTS + 1))
+      PLATEAU_COUNTER=0  # Reset on any improvement
+    else
+      PLATEAU_COUNTER=$((PLATEAU_COUNTER / 2))  # Halve, don't reset — laterals partially explore
     fi
 
     echo "{\"exp\":$EXPERIMENT,\"type\":\"$COMMIT_TYPE\",\"score\":$SCORE,\"prev\":$BASELINE_SCORE,\"hypothesis\":\"$HYPOTHESIS\",\"ts\":\"$(date -Iseconds)\"}" >> "$LOG_FILE"
@@ -253,10 +288,23 @@ Hypothesis: $HYPOTHESIS"
     echo "  [3/3] ✗ Regressed — reverting"
     git checkout -- config/agents/
     # NOTE: Do NOT revert hypothesis file — the mutator needs to see what was last tried
+    PLATEAU_COUNTER=$((PLATEAU_COUNTER + 1))
+    if [ "$PLATEAU_COUNTER" -ge "$PLATEAU_THRESHOLD" ] && [ "$EXPERIMENT" -ge "$MIN_EXPERIMENTS" ]; then
+      echo "  ⚠ Plateau detected: $PLATEAU_COUNTER consecutive non-improvements. Stopping early."
+      echo "{\"exp\":$EXPERIMENT,\"type\":\"revert\",\"score\":$SCORE,\"baseline\":$BASELINE_SCORE,\"hypothesis\":\"$HYPOTHESIS\",\"ts\":\"$(date -Iseconds)\"}" >> "$LOG_FILE"
+      save_checkpoint
+      break
+    fi
 
     echo "{\"exp\":$EXPERIMENT,\"type\":\"revert\",\"score\":$SCORE,\"baseline\":$BASELINE_SCORE,\"hypothesis\":\"$HYPOTHESIS\",\"ts\":\"$(date -Iseconds)\"}" >> "$LOG_FILE"
   fi
+
+  # Save checkpoint at end of each experiment
+  save_checkpoint
 done
+
+# Clean up checkpoint on normal completion
+rm -f "$CHECKPOINT_FILE"
 
 # Summary
 TOTAL_TIME=$(( ($(date +%s) - START_TIME) / 60 ))
