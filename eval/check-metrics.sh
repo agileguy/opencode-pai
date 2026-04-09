@@ -10,11 +10,20 @@ AGENT="$1"
 TASK="$2"
 OUTPUT_DIR="$3"
 STDOUT_LOG="${4:-$OUTPUT_DIR/.stdout.log}"
-PASSED=0
-TOTAL=0
+PASSED_WEIGHT=0
+TOTAL_WEIGHT=0
 
-pass() { PASSED=$((PASSED + 1)); TOTAL=$((TOTAL + 1)); echo "  ✓ $1"; }
-fail() { TOTAL=$((TOTAL + 1)); echo "  ✗ $1"; }
+pass() {
+  local w="${2:-1}"
+  PASSED_WEIGHT=$(awk "BEGIN {print $PASSED_WEIGHT + $w}")
+  TOTAL_WEIGHT=$(awk "BEGIN {print $TOTAL_WEIGHT + $w}")
+  echo "  ✓ $1 [${w}x]"
+}
+fail() {
+  local w="${2:-1}"
+  TOTAL_WEIGHT=$(awk "BEGIN {print $TOTAL_WEIGHT + $w}")
+  echo "  ✗ $1 [${w}x]"
+}
 
 echo "═══ $AGENT / $TASK ═══"
 
@@ -30,10 +39,10 @@ if echo "$AGENT" | grep -q "engineer"; then
   echo "── Execution Metrics ──"
 
   # E1. Implementation file exists and non-empty
-  [ -n "$IMPL" ] && [ -s "$IMPL" ] && pass "E1: impl file exists" || fail "E1: impl file exists"
+  [ -n "$IMPL" ] && [ -s "$IMPL" ] && pass "E1: impl file exists" 2 || fail "E1: impl file exists" 2
 
   # E2. Test file exists and non-empty
-  [ -n "$TEST" ] && [ -s "$TEST" ] && pass "E2: test file exists" || fail "E2: test file exists"
+  [ -n "$TEST" ] && [ -s "$TEST" ] && pass "E2: test file exists" 2 || fail "E2: test file exists" 2
 
   # E3. Tests actually run and pass (bun test with timeout)
   # Check for bun's actual exit code, not just grepping for "pass" in output
@@ -41,12 +50,12 @@ if echo "$AGENT" | grep -q "engineer"; then
     TEST_OUTPUT=$(cd "$OUTPUT_DIR" && timeout 30 bun test 2>&1)
     TEST_EXIT=$?
     if [ "$TEST_EXIT" -eq 0 ] && echo "$TEST_OUTPUT" | grep -qE "[0-9]+ pass"; then
-      pass "E3: tests pass"
+      pass "E3: tests pass" 3
     else
-      fail "E3: tests pass"
+      fail "E3: tests pass" 3
     fi
   else
-    fail "E3: tests pass"
+    fail "E3: tests pass" 3
   fi
 
   # E4. Multiple test cases (not just one token test)
@@ -66,7 +75,7 @@ if echo "$AGENT" | grep -q "engineer"; then
   fi
 
   # E6. Has export (usable module, not just a script)
-  [ -n "$IMPL" ] && grep -q "export" "$IMPL" 2>/dev/null && pass "E6: has export" || fail "E6: has export"
+  [ -n "$IMPL" ] && grep -q "export" "$IMPL" 2>/dev/null && pass "E6: has export" 2 || fail "E6: has export" 2
 
   echo "── Quality Metrics ──"
 
@@ -127,12 +136,12 @@ if echo "$AGENT" | grep -q "engineer"; then
   if [ -n "$TEST" ] && [ -n "$IMPL" ]; then
     IMPL_BASENAME=$(basename "$IMPL" .ts)
     if grep -qE "from.*$IMPL_BASENAME|require.*$IMPL_BASENAME" "$TEST" 2>/dev/null; then
-      pass "Q7: test imports implementation"
+      pass "Q7: test imports implementation" 2
     else
-      fail "Q7: test doesn't import implementation"
+      fail "Q7: test doesn't import implementation" 2
     fi
   else
-    fail "Q7: test imports implementation"
+    fail "Q7: test imports implementation" 2
   fi
 
   # Q8. Tests actually call the implementation (not just asserting constants)
@@ -158,34 +167,75 @@ if echo "$AGENT" | grep -q "engineer"; then
     fail "Q9: no console.log in impl"
   fi
 
+  # Q10. No duplicate code between impl and test
+  if [ -n "$IMPL" ] && [ -n "$TEST" ]; then
+    # Extract 4-line blocks from impl, check if they exist in test
+    DUPES=0
+    # Simple approach: check if any function body from impl is copy-pasted into test
+    IMPL_FUNCS=$(grep -E "^(export )?(async )?function |^const \w+ = " "$IMPL" 2>/dev/null | wc -l | tr -d '[:space:]')
+    TEST_IMPL_CODE=$(grep -cE "^(export )?(async )?function |^const \w+ = .*=>" "$TEST" 2>/dev/null | tr -d '[:space:]' || echo 0)
+    # If test has implementation-style function declarations (not imports), it might be copy-paste
+    [ "$TEST_IMPL_CODE" -le 1 ] && pass "Q10: no duplicate code" || fail "Q10: possible copy-paste ($TEST_IMPL_CODE impl-style declarations in test)"
+  else
+    fail "Q10: no duplicate code"
+  fi
+
+  # Q11. Exported function matches task expectation
+  if [ -n "$IMPL" ]; then
+    case "$TASK" in
+      01-palindrome) EXPECTED="isPalindrome" ;;
+      02-debounce) EXPECTED="debounce" ;;
+      03-csv2json) EXPECTED="csvToJson" ;;
+      04-fix-sort) EXPECTED="sort" ;;
+      05-stack) EXPECTED="Stack" ;;
+      06-linked-list) EXPECTED="LinkedList" ;;
+      07-retry) EXPECTED="retry" ;;
+      08-event-emitter) EXPECTED="EventEmitter" ;;
+      09-lru-cache) EXPECTED="LRUCache" ;;
+      10-validator) EXPECTED="Schema\|Validator\|validate" ;;
+      *) EXPECTED="" ;;
+    esac
+    if [ -n "$EXPECTED" ]; then
+      if grep -qE "export.*(${EXPECTED})" "$IMPL" 2>/dev/null; then
+        pass "Q11: exports expected name ($EXPECTED)"
+      else
+        fail "Q11: missing expected export ($EXPECTED)"
+      fi
+    else
+      pass "Q11: no expected name (unknown task)"
+    fi
+  else
+    fail "Q11: function name matches task"
+  fi
+
   echo "── Speed Metrics ──"
 
   # S1. Used write/edit tools (not just text output)
   if echo "$STDOUT_CLEAN" | grep -qiE "Write|Edit|→.*write|→.*edit|Created|wrote" 2>/dev/null; then
-    pass "S1: used write/edit tools"
+    pass "S1: used write/edit tools" 0.5
   elif [ -n "$IMPL" ]; then
-    pass "S1: used write/edit tools (files exist)"
+    pass "S1: used write/edit tools (files exist)" 0.5
   else
-    fail "S1: no tool usage detected"
+    fail "S1: no tool usage detected" 0.5
   fi
 
   # S2. First tool call within first 500 chars of output (didn't ramble)
   FIRST_TOOL=$(echo "$STDOUT_CLEAN" | head -c 800 | grep -ciE "→.*Read|→.*Write|→.*Edit|→.*Bash|\$ mkdir|\$ bun" 2>/dev/null | tr -d '[:space:]' || echo 0)
-  [ "$FIRST_TOOL" -ge 1 ] && pass "S2: fast start (tool in first 800 chars)" || fail "S2: slow start (verbose preamble)"
+  [ "$FIRST_TOOL" -ge 1 ] && pass "S2: fast start (tool in first 800 chars)" 0.5 || fail "S2: slow start (verbose preamble)" 0.5
 
   # S3. Output not excessively long (efficient agent)
   if [ -f "$STDOUT_LOG" ]; then
     OUT_SIZE=$(wc -c < "$STDOUT_LOG" | tr -d ' ')
-    [ "$OUT_SIZE" -le 50000 ] && pass "S3: concise output (${OUT_SIZE} bytes)" || fail "S3: verbose output (${OUT_SIZE} bytes)"
+    [ "$OUT_SIZE" -le 50000 ] && pass "S3: concise output (${OUT_SIZE} bytes)" 0.5 || fail "S3: verbose output (${OUT_SIZE} bytes)" 0.5
   else
-    pass "S3: concise output (no log)"
+    pass "S3: concise output (no log)" 0.5
   fi
 
   # S4. Completed (didn't timeout or truncate)
   if [ -n "$IMPL" ] && [ -n "$TEST" ]; then
-    pass "S4: completed successfully"
+    pass "S4: completed successfully" 0.5
   else
-    fail "S4: incomplete (missing files)"
+    fail "S4: incomplete (missing files)" 0.5
   fi
 
   # S5. TDD order — test file created before implementation
@@ -193,12 +243,12 @@ if echo "$AGENT" | grep -q "engineer"; then
     TEST_TIME=$(stat -c %Y "$TEST" 2>/dev/null || echo 0)
     IMPL_TIME=$(stat -c %Y "$IMPL" 2>/dev/null || echo 0)
     if [ "$TEST_TIME" -le "$IMPL_TIME" ] 2>/dev/null; then
-      pass "S5: TDD order (test first)"
+      pass "S5: TDD order (test first)" 2
     else
-      fail "S5: wrote impl before test"
+      fail "S5: wrote impl before test" 2
     fi
   else
-    fail "S5: TDD order"
+    fail "S5: TDD order" 2
   fi
 
 elif echo "$AGENT" | grep -q "boss"; then
@@ -209,24 +259,24 @@ elif echo "$AGENT" | grep -q "boss"; then
 
   # D1. Delegated (task tool was called)
   if echo "$STDOUT_CLEAN" | grep -qiE "task|delegate|subagent|pai-engineer" 2>/dev/null; then
-    pass "D1: delegation occurred"
+    pass "D1: delegation occurred" 3
   elif [ -n "$ANY" ]; then
-    pass "D1: delegation occurred (output exists)"
+    pass "D1: delegation occurred (output exists)" 3
   else
-    fail "D1: no delegation"
+    fail "D1: no delegation" 3
   fi
 
   # D2. Correct agent routing
   if echo "$STDOUT_CLEAN" | grep -qi "pai-engineer" 2>/dev/null; then
-    pass "D2: routed to pai-engineer"
+    pass "D2: routed to pai-engineer" 2
   elif [ -n "$ANY" ]; then
-    pass "D2: correct agent (output exists)"
+    pass "D2: correct agent (output exists)" 2
   else
-    fail "D2: wrong agent or no routing"
+    fail "D2: wrong agent or no routing" 2
   fi
 
   # D3. Output files exist
-  [ -n "$ANY" ] && pass "D3: output files exist" || fail "D3: no output files"
+  [ -n "$ANY" ] && pass "D3: output files exist" 3 || fail "D3: no output files" 3
 
   # D4. Boss didn't write code directly (check stdout for write tool by boss vs subagent)
   if echo "$STDOUT_CLEAN" | grep -qiE "boss.*write\|boss.*edit" 2>/dev/null; then
@@ -244,9 +294,18 @@ elif echo "$AGENT" | grep -q "boss"; then
 
   # D6. Brief was specific (delegation had file paths)
   if echo "$STDOUT_CLEAN" | grep -qiE "/workspace|\.ts|output" 2>/dev/null; then
-    pass "D6: specific delegation brief"
+    pass "D6: specific delegation brief" 2
   else
-    fail "D6: vague delegation"
+    fail "D6: vague delegation" 2
+  fi
+
+  # D7. Verified output (read the file after delegation)
+  if echo "$STDOUT_CLEAN" | grep -qiE "→.*Read.*output\|reading.*output\|verified\|checking.*output" 2>/dev/null; then
+    pass "D7: verified output"
+  elif echo "$STDOUT_CLEAN" | grep -qiE "Read.*\.ts\|cat.*\.ts" 2>/dev/null; then
+    pass "D7: verified output (read file)"
+  else
+    fail "D7: no verification step"
   fi
 
 elif echo "$AGENT" | grep -q "architect"; then
@@ -263,42 +322,42 @@ elif echo "$AGENT" | grep -q "architect"; then
   fi
 
   # A1. Output document exists and is non-empty
-  [ -n "$DOC" ] && [ -s "$DOC" ] && pass "A1: design doc exists" || fail "A1: no design doc produced"
+  [ -n "$DOC" ] && [ -s "$DOC" ] && pass "A1: design doc exists" 3 || fail "A1: no design doc produced" 3
 
   # A2. Has clear structure (markdown headers)
   if [ -n "$DOC_CONTENT" ]; then
     HEADER_COUNT=$(echo "$DOC_CONTENT" | grep -cE "^#{1,3} " 2>/dev/null | tr -d '[:space:]')
     [ -z "$HEADER_COUNT" ] && HEADER_COUNT=0
-    [ "$HEADER_COUNT" -ge 3 ] && pass "A2: structured ($HEADER_COUNT sections)" || fail "A2: poorly structured ($HEADER_COUNT sections)"
+    [ "$HEADER_COUNT" -ge 3 ] && pass "A2: structured ($HEADER_COUNT sections)" 2 || fail "A2: poorly structured ($HEADER_COUNT sections)" 2
   else
-    fail "A2: structured document"
+    fail "A2: structured document" 2
   fi
 
   # A3. Contains trade-off analysis
   if [ -n "$DOC_CONTENT" ]; then
     TRADEOFF=$(echo "$DOC_CONTENT" | grep -ciE "trade.?off|pros? and cons?|advantage|disadvantage|versus|vs\.|compared to|alternative" 2>/dev/null | tr -d '[:space:]')
     [ -z "$TRADEOFF" ] && TRADEOFF=0
-    [ "$TRADEOFF" -ge 2 ] && pass "A3: trade-off analysis present ($TRADEOFF refs)" || fail "A3: missing trade-off analysis ($TRADEOFF refs)"
+    [ "$TRADEOFF" -ge 2 ] && pass "A3: trade-off analysis present ($TRADEOFF refs)" 3 || fail "A3: missing trade-off analysis ($TRADEOFF refs)" 3
   else
-    fail "A3: trade-off analysis"
+    fail "A3: trade-off analysis" 3
   fi
 
   # A4. Addresses constraints and requirements
   if [ -n "$DOC_CONTENT" ]; then
     CONSTRAINTS=$(echo "$DOC_CONTENT" | grep -ciE "require|constraint|must|should|limit|boundar|scale|performance|latency|throughput" 2>/dev/null | tr -d '[:space:]')
     [ -z "$CONSTRAINTS" ] && CONSTRAINTS=0
-    [ "$CONSTRAINTS" -ge 3 ] && pass "A4: addresses constraints ($CONSTRAINTS refs)" || fail "A4: ignores constraints ($CONSTRAINTS refs)"
+    [ "$CONSTRAINTS" -ge 3 ] && pass "A4: addresses constraints ($CONSTRAINTS refs)" 2 || fail "A4: ignores constraints ($CONSTRAINTS refs)" 2
   else
-    fail "A4: addresses constraints"
+    fail "A4: addresses constraints" 2
   fi
 
   # A5. Has concrete recommendation (not just open-ended discussion)
   if [ -n "$DOC_CONTENT" ]; then
     RECOMMEND=$(echo "$DOC_CONTENT" | grep -ciE "recommend|suggest|propose|chosen|decision|conclusion|prefer|best option|go with" 2>/dev/null | tr -d '[:space:]')
     [ -z "$RECOMMEND" ] && RECOMMEND=0
-    [ "$RECOMMEND" -ge 1 ] && pass "A5: makes a recommendation" || fail "A5: no clear recommendation"
+    [ "$RECOMMEND" -ge 1 ] && pass "A5: makes a recommendation" 3 || fail "A5: no clear recommendation" 3
   else
-    fail "A5: makes a recommendation"
+    fail "A5: makes a recommendation" 3
   fi
 
   # A6. Reasonable length (not too short, not bloated — 30 to 300 lines)
@@ -321,9 +380,9 @@ elif echo "$AGENT" | grep -q "architect"; then
   if [ -n "$DOC_CONTENT" ]; then
     RISKS=$(echo "$DOC_CONTENT" | grep -ciE "fail|risk|edge case|downtime|fallback|degrad|error|disaster|recovery|rollback|mitiga" 2>/dev/null | tr -d '[:space:]')
     [ -z "$RISKS" ] && RISKS=0
-    [ "$RISKS" -ge 2 ] && pass "A8: failure modes addressed ($RISKS refs)" || fail "A8: missing failure analysis ($RISKS refs)"
+    [ "$RISKS" -ge 2 ] && pass "A8: failure modes addressed ($RISKS refs)" 2 || fail "A8: missing failure analysis ($RISKS refs)" 2
   else
-    fail "A8: failure modes"
+    fail "A8: failure modes" 2
   fi
 
   echo "── Speed Metrics ──"
@@ -340,14 +399,32 @@ elif echo "$AGENT" | grep -q "architect"; then
   else
     pass "A10: concise output (no log)"
   fi
+
+  # A11. Contains quantitative estimates
+  if [ -n "$DOC_CONTENT" ]; then
+    QUANT=$(echo "$DOC_CONTENT" | grep -ciE "[0-9]+\s*(ms|seconds?|minutes?|hours?|req|requests?|qps|tps|%|percent|GB|MB|KB|rows?|records?|users?|connections?)" 2>/dev/null | tr -d '[:space:]')
+    [ -z "$QUANT" ] && QUANT=0
+    [ "$QUANT" -ge 3 ] && pass "A11: quantitative estimates ($QUANT found)" || fail "A11: lacks quantitative data ($QUANT found, need 3)"
+  else
+    fail "A11: quantitative estimates"
+  fi
+
+  # A12. Contains table or structured comparison
+  if [ -n "$DOC_CONTENT" ]; then
+    TABLES=$(echo "$DOC_CONTENT" | grep -cE "^\|.*\|.*\|" 2>/dev/null | tr -d '[:space:]')
+    [ -z "$TABLES" ] && TABLES=0
+    [ "$TABLES" -ge 3 ] && pass "A12: structured comparison ($TABLES table rows)" || fail "A12: no structured comparison"
+  else
+    fail "A12: structured comparison"
+  fi
 fi
 
 # Score
-if [ "$TOTAL" -eq 0 ]; then
+if [ "$(awk "BEGIN {print ($TOTAL_WEIGHT == 0)}")" -eq 1 ]; then
   echo "0.000"
 else
-  SCORE=$(awk "BEGIN {printf \"%.3f\", $PASSED / $TOTAL}")
+  SCORE=$(awk "BEGIN {printf \"%.3f\", $PASSED_WEIGHT / $TOTAL_WEIGHT}")
   echo ""
-  echo "═══ Score: $SCORE ($PASSED/$TOTAL) ═══"
+  echo "═══ Score: $SCORE (weight ${PASSED_WEIGHT}/${TOTAL_WEIGHT}) ═══"
   echo "$SCORE"
 fi

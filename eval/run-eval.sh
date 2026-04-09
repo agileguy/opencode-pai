@@ -8,7 +8,7 @@ set -uo pipefail
 EVAL_DIR="$(cd "$(dirname "$0")" && pwd)"
 AGENT="${1:-all}"  # pai-engineer, pai-boss, or all
 TIMEOUT=300  # 5 min per task
-MAX_TASKS="${MAX_TASKS:-3}"  # Limit tasks per eval run for speed
+MAX_TASKS="${MAX_TASKS:-999}"  # Run all tasks by default
 TOTAL_SCORE=0
 TOTAL_TASKS=0
 RESULTS_DIR="$EVAL_DIR/results/$(date +%Y%m%d-%H%M%S)"
@@ -63,19 +63,25 @@ run_task() {
     cp -n "$f" "$output_dir/" 2>/dev/null || true
   done
 
-  # Check metrics
+  # Check metrics — capture full output for per-metric logging
+  local metrics_output
+  metrics_output=$(bash "$EVAL_DIR/check-metrics.sh" "$agent" "$task_name" "$output_dir" 2>&1)
   local score
-  score=$(bash "$EVAL_DIR/check-metrics.sh" "$agent" "$task_name" "$output_dir" 2>&1 | tail -1)
+  score=$(echo "$metrics_output" | tail -1)
 
   # Handle non-numeric score
   if ! echo "$score" | grep -qE '^[0-9]'; then
     score="0.000"
   fi
 
+  # Extract compact metrics string (e.g. "E1:pass E2:fail E3:pass ...")
+  local metrics_compact
+  metrics_compact=$(echo "$metrics_output" | grep -E '^\s+[✓✗]' | sed -E 's/^\s+✓ ([A-Z][0-9]+):.*/\1:pass/; s/^\s+✗ ([A-Z][0-9]+):.*/\1:fail/' | tr '\n' ' ' | sed 's/ $//')
+
   echo "  → Score: $score"
 
-  # Log result
-  echo "{\"agent\":\"$agent\",\"task\":\"$task_name\",\"score\":$score,\"ts\":\"$(date -Iseconds)\"}" >> "$RESULTS_DIR/results.jsonl"
+  # Log result with per-metric detail
+  echo "{\"agent\":\"$agent\",\"task\":\"$task_name\",\"score\":$score,\"metrics\":\"$metrics_compact\",\"ts\":\"$(date -Iseconds)\"}" >> "$RESULTS_DIR/results.jsonl"
 
   TOTAL_SCORE=$(awk "BEGIN {print $TOTAL_SCORE + $score}")
   TOTAL_TASKS=$((TOTAL_TASKS + 1))
