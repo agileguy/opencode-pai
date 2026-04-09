@@ -1,0 +1,17 @@
+{
+  "engineer": {
+    "easy": ["01-palindrome", "05-stack"],
+    "medium": ["02-debounce", "03-csv2json", "06-linked-list"],
+    "hard": ["04-fix-sort", "07-retry", "08-event-emitter", "09-lru-cache", "10-validator"]
+  },
+  "architect": {
+    "easy": ["01-cache-strategy"],
+    "medium": ["02-auth-spec", "03-queue-vs-sync"],
+    "hard": ["04-multi-tenant"]
+  },
+  "boss": {
+    "easy": ["01-email-validator", "02-slug-generator"],
+    "medium": ["03-config-parser"],
+    "hard": ["04-task-queue"]
+  }
+}

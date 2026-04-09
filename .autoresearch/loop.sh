@@ -159,7 +159,34 @@ while [ "$EXPERIMENT" -lt "$MAX_EXPERIMENTS" ]; do
 
   # Pick a random task to focus the mutation on
   TASK_DIR_NAME="${EVAL_AGENT#pai-}"
-  FOCUS_TASK=$(ls "$EVAL_DIR/tasks/$TASK_DIR_NAME/"*.txt 2>/dev/null | sort -R | head -1)
+  # Prefer harder tasks for focus — more improvement potential
+  DIFFICULTY_FILE="$EVAL_DIR/task-difficulty.json"
+  if [ -f "$DIFFICULTY_FILE" ] && command -v python3 &>/dev/null; then
+    FOCUS_TASK=$(python3 -c "
+import json, random, glob, os
+d = json.load(open('$DIFFICULTY_FILE'))
+agent_tasks = d.get('${TASK_DIR_NAME}', {})
+r = random.random()
+if r < 0.7:
+    pool = agent_tasks.get('hard', [])
+elif r < 0.9:
+    pool = agent_tasks.get('medium', [])
+else:
+    pool = agent_tasks.get('easy', [])
+if not pool:
+    pool = agent_tasks.get('hard', []) + agent_tasks.get('medium', []) + agent_tasks.get('easy', [])
+if pool:
+    task = random.choice(pool)
+    path = glob.glob('$EVAL_DIR/tasks/$TASK_DIR_NAME/' + task + '.txt')
+    print(path[0] if path else '')
+else:
+    print('')
+" 2>/dev/null)
+  fi
+  # Fallback to random if python failed or no difficulty file
+  if [ -z "$FOCUS_TASK" ]; then
+    FOCUS_TASK=$(ls "$EVAL_DIR/tasks/$TASK_DIR_NAME/"*.txt 2>/dev/null | sort -R | head -1)
+  fi
   FOCUS_NAME=$(basename "$FOCUS_TASK" .txt 2>/dev/null || echo "general")
 
   # Get last 5 results for context
