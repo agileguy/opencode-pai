@@ -31,7 +31,10 @@ run_task() {
   # Read task prompt and inject output dir
   local raw_prompt
   raw_prompt=$(cat "$task_file")
-  local prompt="${raw_prompt} IMPORTANT: Save ALL output files to ${output_dir}/"
+  # Force deterministic eval — override agent temperature
+  export OPENCODE_EVAL_TEMP=0
+
+  local prompt="${raw_prompt} IMPORTANT: Save ALL output files to ${output_dir}/ IMPORTANT: Use temperature 0 for deterministic output."
 
   # Run opencode with the agent
   echo "  Running task (timeout ${TIMEOUT}s)..."

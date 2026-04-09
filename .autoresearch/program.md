@@ -138,6 +138,31 @@ There are 25 metrics across 3 categories (engineer has 22, boss has 7, architect
 - `A11: quantitative estimates` — Design doc contains numeric estimates (latency ms, throughput, capacity, percentages) — needs 3+ ★ NEW
 - `A12: structured comparison` — Design doc contains markdown tables or structured comparisons (3+ table rows) ★ NEW
 
+## Task Difficulty Tiers
+
+Focus mutations on medium and hard tasks. Easy tasks should score >0.9 consistently.
+
+### Engineer
+| Tier | Tasks |
+|------|-------|
+| Easy | 01-palindrome, 05-stack |
+| Medium | 02-debounce, 03-csv2json, 06-linked-list |
+| Hard | 04-fix-sort, 07-retry, 08-event-emitter, 09-lru-cache, 10-validator |
+
+### Architect
+| Tier | Tasks |
+|------|-------|
+| Easy | 01-cache-strategy |
+| Medium | 02-auth-spec, 03-queue-vs-sync |
+| Hard | 04-multi-tenant |
+
+### Boss
+| Tier | Tasks |
+|------|-------|
+| Easy | 01-email-validator, 02-slug-generator |
+| Medium | 03-config-parser |
+| Hard | 04-task-queue |
+
 ## Important
 
 You are making the prompts better for **local 26-31B models**, not cloud models like Claude or GPT. Local models need:
