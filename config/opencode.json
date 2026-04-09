@@ -1,6 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "omlx/gemma-4-31b-it-4bit",
+  "model": "omlx/gpt-oss-120b-MXFP4-Q8",
   "small_model": "omlx/gpt-oss-120b-MXFP4-Q8",
   "disabled_providers": [
     "opencode"
@@ -83,43 +83,43 @@
   },
   "agent": {
     "pai-boss": {
-      "model": "omlx/gemma-4-31b-it-4bit",
+      "model": "omlx/gpt-oss-120b-MXFP4-Q8",
       "maxSteps": 50
     },
     "pai-architect": {
-      "model": "omlx/gemma-4-31b-it-4bit",
+      "model": "omlx/gpt-oss-120b-MXFP4-Q8",
       "maxSteps": 30
     },
     "pai-engineer": {
-      "model": "omlx/gemma-4-31b-it-4bit",
+      "model": "omlx/gpt-oss-120b-MXFP4-Q8",
       "maxSteps": 40
     },
     "pai-designer": {
-      "model": "omlx/gemma-4-31b-it-4bit",
+      "model": "omlx/gpt-oss-120b-MXFP4-Q8",
       "maxSteps": 30
     },
     "pai-qa": {
-      "model": "omlx/gemma-4-31b-it-4bit",
+      "model": "omlx/gpt-oss-120b-MXFP4-Q8",
       "maxSteps": 30
     },
     "pai-pentester": {
-      "model": "omlx/gemma-4-31b-it-4bit",
+      "model": "omlx/gpt-oss-120b-MXFP4-Q8",
       "maxSteps": 20
     },
     "pai-artist": {
-      "model": "omlx/gemma-4-31b-it-4bit",
+      "model": "omlx/gpt-oss-120b-MXFP4-Q8",
       "maxSteps": 20
     },
     "pai-researcher": {
-      "model": "omlx/gemma-4-31b-it-4bit",
+      "model": "omlx/gpt-oss-120b-MXFP4-Q8",
       "maxSteps": 25
     },
     "pai-sre": {
-      "model": "omlx/gemma-4-31b-it-4bit",
+      "model": "omlx/gpt-oss-120b-MXFP4-Q8",
       "maxSteps": 30
     },
     "pai-pm": {
-      "model": "omlx/gemma-4-31b-it-4bit",
+      "model": "omlx/gpt-oss-120b-MXFP4-Q8",
       "maxSteps": 30
     }
   },
