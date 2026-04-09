@@ -1,7 +1,7 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "omlx/gpt-oss-120b-MXFP4-Q8",
-  "small_model": "omlx/gpt-oss-120b-MXFP4-Q8",
+  "model": "omlx/gemma-4-31b-it-8bit",
+  "small_model": "omlx/gemma-4-31b-it-8bit",
   "disabled_providers": [
     "opencode"
   ],
@@ -38,6 +38,13 @@
         },
         "gpt-oss-120b-MXFP4-Q8": {
           "name": "GPT-OSS 120B (MLX)",
+          "limit": {
+            "context": 131072,
+            "output": 8192
+          }
+        },
+        "gemma-4-31b-it-8bit": {
+          "name": "Gemma 4 31B IT 8-bit (MLX)",
           "limit": {
             "context": 131072,
             "output": 8192
@@ -90,43 +97,43 @@
   },
   "agent": {
     "pai-boss": {
-      "model": "omlx/gpt-oss-120b-MXFP4-Q8",
+      "model": "omlx/gemma-4-31b-it-8bit",
       "maxSteps": 50
     },
     "pai-architect": {
-      "model": "omlx/gpt-oss-120b-MXFP4-Q8",
+      "model": "omlx/gemma-4-31b-it-8bit",
       "maxSteps": 30
     },
     "pai-engineer": {
-      "model": "omlx/gpt-oss-120b-MXFP4-Q8",
+      "model": "omlx/gemma-4-31b-it-8bit",
       "maxSteps": 40
     },
     "pai-designer": {
-      "model": "omlx/gpt-oss-120b-MXFP4-Q8",
+      "model": "omlx/gemma-4-31b-it-8bit",
       "maxSteps": 30
     },
     "pai-qa": {
-      "model": "omlx/gpt-oss-120b-MXFP4-Q8",
+      "model": "omlx/gemma-4-31b-it-8bit",
       "maxSteps": 30
     },
     "pai-pentester": {
-      "model": "omlx/gpt-oss-120b-MXFP4-Q8",
+      "model": "omlx/gemma-4-31b-it-8bit",
       "maxSteps": 20
     },
     "pai-artist": {
-      "model": "omlx/gpt-oss-120b-MXFP4-Q8",
+      "model": "omlx/gemma-4-31b-it-8bit",
       "maxSteps": 20
     },
     "pai-researcher": {
-      "model": "omlx/gpt-oss-120b-MXFP4-Q8",
+      "model": "omlx/gemma-4-31b-it-8bit",
       "maxSteps": 25
     },
     "pai-sre": {
-      "model": "omlx/gpt-oss-120b-MXFP4-Q8",
+      "model": "omlx/gemma-4-31b-it-8bit",
       "maxSteps": 30
     },
     "pai-pm": {
-      "model": "omlx/gpt-oss-120b-MXFP4-Q8",
+      "model": "omlx/gemma-4-31b-it-8bit",
       "maxSteps": 30
     }
   },
