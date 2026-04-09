@@ -49,24 +49,26 @@ Agent prompt files in `config/agents/`. Each file defines how a PAI agent behave
 
 ## Metric Definitions (so you know what to optimize for)
 
-There are 16 metrics across 3 categories. Current weak areas are marked with ★.
+There are 20 metrics across 3 categories (engineer has 20, boss has 6, architect has 10). Current weak areas are marked with ★.
 
 ### EXECUTION metrics (do the basics work?):
 - `E1: impl file exists` — Did the agent create the implementation file?
 - `E2: test file exists` — Did the agent create a test file?
-- `E3: tests pass` — Do tests actually pass when run with `bun test`? ★ HARD
+- `E3: tests pass` — Do tests pass with exit code 0 AND show "N pass" in output? ★ HARD (strengthened — checks exit code, not just grepping "pass")
 - `E4: ≥3 test cases` — Are there at least 3 distinct test cases?
 - `E5: ≥3 assertions` — Are there at least 3 expect/assert calls?
 - `E6: has export` — Is the function exported (usable as a module)?
 
 ### QUALITY metrics (is the code good?):
 - `Q1: no 'any' types` — No TypeScript `any` type usage ★ COMMON FAILURE
-- `Q2: clean imports` — No hallucinated npm package imports
+- `Q2: clean imports` — No hallucinated npm package imports (node builtins OK)
 - `Q3: error handling` — Has try/catch, throw, or null checks
-- `Q4: edge cases tested` — Tests cover empty, null, boundary cases ★ COMMON FAILURE
+- `Q4: edge cases tested` — Tests have edge case descriptions AND actual edge values ("", [], null, 0) ★ STRENGTHENED
 - `Q5: typed signatures` — Functions have type annotations
 - `Q6: reasonable size` — 5-150 lines (not bloated or trivially empty)
 - `Q7: test imports impl` — Test file imports the implementation
+- `Q8: tests exercise impl` — Tests call the actual function, not just assert constants ★ NEW
+- `Q9: no console.log` — No console.log/debug/info in implementation ★ NEW
 
 ### SPEED metrics (is the agent efficient?):
 - `S1: used tools` — Agent used write/edit tools (not just text output)

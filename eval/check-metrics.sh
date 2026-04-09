@@ -36,9 +36,11 @@ if echo "$AGENT" | grep -q "engineer"; then
   [ -n "$TEST" ] && [ -s "$TEST" ] && pass "E2: test file exists" || fail "E2: test file exists"
 
   # E3. Tests actually run and pass (bun test with timeout)
+  # Check for bun's actual exit code, not just grepping for "pass" in output
   if [ -n "$TEST" ]; then
-    TEST_OUTPUT=$(cd "$OUTPUT_DIR" && timeout 30 bun test 2>&1 || echo "FAILED")
-    if echo "$TEST_OUTPUT" | grep -q "pass"; then
+    TEST_OUTPUT=$(cd "$OUTPUT_DIR" && timeout 30 bun test 2>&1)
+    TEST_EXIT=$?
+    if [ "$TEST_EXIT" -eq 0 ] && echo "$TEST_OUTPUT" | grep -qE "[0-9]+ pass"; then
       pass "E3: tests pass"
     else
       fail "E3: tests pass"
@@ -78,7 +80,7 @@ if echo "$AGENT" | grep -q "engineer"; then
 
   # Q2. No hallucinated imports (only relative, node:, bun: builtins)
   if [ -n "$IMPL" ]; then
-    BAD=$(grep "^import" "$IMPL" 2>/dev/null | grep -vE 'from ["\x27]\.|from ["\x27]node:|from ["\x27]bun:|from ["\x27]fs|from ["\x27]path|from ["\x27]crypto|from ["\x27]util|from ["\x27]assert' | head -1)
+    BAD=$(grep "^import" "$IMPL" 2>/dev/null | grep -vE 'from ["\x27]\.|from ["\x27]node:|from ["\x27]bun:|from ["\x27]fs|from ["\x27]path|from ["\x27]crypto|from ["\x27]util|from ["\x27]assert|from ["\x27]events|from ["\x27]stream|from ["\x27]http|from ["\x27]os|from ["\x27]url|from ["\x27]buffer|from ["\x27]zlib' | head -1)
     [ -z "$BAD" ] && pass "Q2: clean imports" || fail "Q2: hallucinated import: $BAD"
   else
     fail "Q2: clean imports"
@@ -93,9 +95,12 @@ if echo "$AGENT" | grep -q "engineer"; then
   fi
 
   # Q4. Edge cases in tests (empty input, null, boundary)
+  # Check both test descriptions AND actual edge case values in assertions
   if [ -n "$TEST" ]; then
-    EDGE_CASES=$(grep -ciE "empty|null|undefined|edge|boundary|invalid|throw|error|zero|negative|special" "$TEST" 2>/dev/null | head -1 || echo 0)
-    [ "$EDGE_CASES" -ge 2 ] && pass "Q4: edge cases tested ($EDGE_CASES found)" || fail "Q4: insufficient edge cases ($EDGE_CASES found)"
+    EDGE_DESC=$(grep -ciE "empty|null|undefined|edge|boundary|invalid|throw|error|zero|negative|special" "$TEST" 2>/dev/null | head -1 || echo 0)
+    EDGE_VALUES=$(grep -cE '""|\[\]|\{\}|null|undefined|NaN|Infinity|-1|0\b' "$TEST" 2>/dev/null | head -1 || echo 0)
+    EDGE_TOTAL=$((EDGE_DESC + EDGE_VALUES))
+    [ "$EDGE_TOTAL" -ge 3 ] && pass "Q4: edge cases tested ($EDGE_DESC desc + $EDGE_VALUES values)" || fail "Q4: insufficient edge cases ($EDGE_TOTAL found, need 3)"
   else
     fail "Q4: edge cases tested"
   fi
@@ -128,6 +133,29 @@ if echo "$AGENT" | grep -q "engineer"; then
     fi
   else
     fail "Q7: test imports implementation"
+  fi
+
+  # Q8. Tests actually call the implementation (not just asserting constants)
+  if [ -n "$TEST" ] && [ -n "$IMPL" ]; then
+    IMPL_BASENAME=$(basename "$IMPL" .ts)
+    # Count function calls from the imported module in test assertions/expects
+    FUNC_CALLS=$(grep -cE "$IMPL_BASENAME|expect\(.*\(" "$TEST" 2>/dev/null | head -1 || echo 0)
+    TRIVIAL_ASSERTS=$(grep -cE "expect\(true\)|expect\(1\)|expect\(false\)|expect\(0\)" "$TEST" 2>/dev/null | head -1 || echo 0)
+    if [ "$FUNC_CALLS" -ge 2 ] && [ "$TRIVIAL_ASSERTS" -le 1 ]; then
+      pass "Q8: tests exercise implementation ($FUNC_CALLS calls, $TRIVIAL_ASSERTS trivial)"
+    else
+      fail "Q8: tests may be trivial ($FUNC_CALLS calls, $TRIVIAL_ASSERTS trivial)"
+    fi
+  else
+    fail "Q8: tests exercise implementation"
+  fi
+
+  # Q9. No console.log left in implementation (clean production code)
+  if [ -n "$IMPL" ]; then
+    LOG_COUNT=$(grep -cE "console\.(log|debug|info)" "$IMPL" 2>/dev/null | head -1 || echo 0)
+    [ "$LOG_COUNT" -eq 0 ] && pass "Q9: no console.log in impl" || fail "Q9: console.log in impl ($LOG_COUNT found)"
+  else
+    fail "Q9: no console.log in impl"
   fi
 
   echo "── Speed Metrics ──"
