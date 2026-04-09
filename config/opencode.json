@@ -36,6 +36,13 @@
             "output": 8192
           }
         },
+        "gpt-oss-120b-MXFP4-Q8": {
+          "name": "GPT-OSS 120B (MLX)",
+          "limit": {
+            "context": 131072,
+            "output": 8192
+          }
+        },
         "gemma-4-31b-8bit": {
           "name": "Gemma 4 31B 8-bit (MLX)",
           "limit": {
