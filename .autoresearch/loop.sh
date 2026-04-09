@@ -28,6 +28,51 @@ MAX_EXPERIMENTS="${MAX_EXPERIMENTS:-50}"
 NO_MUTATION_STREAK=0
 MAX_NO_MUTATION_STREAK=3  # After this many no-mutations, force diversity
 
+# Mutation strategies — round-robin rotation
+STRATEGIES=(
+  "remove_verbose"
+  "reorder_top3"
+  "add_example"
+  "shrink_prompt"
+  "change_sequencing"
+  "explicit_tool_call"
+  "remove_last_added"
+)
+STRATEGY_INDEX=0
+
+# Get latest per-task results for failure analysis
+get_failure_analysis() {
+  local results_dir
+  results_dir=$(ls -td "$EVAL_DIR/results/"* 2>/dev/null | head -1)
+  if [ -n "$results_dir" ] && [ -f "$results_dir/results.jsonl" ]; then
+    # Extract task scores and find weakest
+    python3 -c "
+import json, sys
+tasks = []
+with open('$results_dir/results.jsonl') as f:
+    for line in f:
+        d = json.loads(line)
+        if d.get('agent') == '$EVAL_AGENT':
+            tasks.append(d)
+if tasks:
+    tasks.sort(key=lambda x: x['score'])
+    print('TASK SCORES:')
+    for t in tasks:
+        status = 'WEAK' if t['score'] < 0.85 else 'strong'
+        metrics = t.get('metrics', 'no metrics')
+        print(f\"  {t['task']}: {t['score']:.3f} ({status}) — {metrics}\")
+    weakest = tasks[0]
+    failing = [m.split(':')[0]+':'+m.split(':')[1] for m in weakest.get('metrics','').split() if 'fail' in m]
+    print(f\"\\nWEAKEST: {weakest['task']} ({weakest['score']:.3f})\")
+    if failing:
+        print(f\"FAILING METRICS: {', '.join(failing)}\")
+    print(f\"Target your mutation at: {weakest['task']}\")
+" 2>/dev/null || echo "No task analysis available"
+  else
+    echo "No results available yet"
+  fi
+}
+
 # Always establish baseline on first run (score <= 0)
 CURRENT_BASELINE=$(cat "$BASELINE_FILE" 2>/dev/null || echo "0.0")
 if [ "$CURRENT_BASELINE" = "0.0" ] || [ "$CURRENT_BASELINE" = "0" ]; then
@@ -72,6 +117,14 @@ while [ "$EXPERIMENT" -lt "$MAX_EXPERIMENTS" ]; do
   # 1. MUTATE — Use opencode to modify agent prompt
   echo "  [1/3] Mutating prompt..."
 
+  # Compute current strategy via round-robin
+  CURRENT_STRATEGY="${STRATEGIES[$((STRATEGY_INDEX % ${#STRATEGIES[@]}))]}"
+  STRATEGY_INDEX=$((STRATEGY_INDEX + 1))
+  echo "  Strategy: $CURRENT_STRATEGY"
+
+  # Get failure analysis from last eval run
+  FAILURE_ANALYSIS=$(get_failure_analysis)
+
   # Pick a random task to focus the mutation on
   TASK_DIR_NAME="${EVAL_AGENT#pai-}"
   FOCUS_TASK=$(ls "$EVAL_DIR/tasks/$TASK_DIR_NAME/"*.txt 2>/dev/null | sort -R | head -1)
@@ -105,6 +158,20 @@ $RECENT
 ALREADY TRIED (do NOT repeat these — try something DIFFERENT):
 $TRIED
 $DIVERSITY_HINT
+Your MANDATORY strategy for this round is: $CURRENT_STRATEGY
+- remove_verbose: Delete the longest or most wordy section/rule
+- reorder_top3: Move the 3 most important instructions to the very top of the prompt
+- add_example: Add a concrete input→output example relevant to the focus task
+- shrink_prompt: Remove at least 2 lines to make the prompt shorter
+- change_sequencing: Add a "Do X BEFORE Y" constraint based on failure patterns
+- explicit_tool_call: Add explicit "Use the write tool to create {filename}" instruction
+- remove_last_added: Undo/revert the most recent addition that wasn't reverted by the loop
+
+You MUST follow the assigned strategy. Do not default to "add a rule."
+
+Task-level failure analysis from last eval:
+$FAILURE_ANALYSIS
+
 Focus: the '$FOCUS_NAME' task is currently underperforming. Read the task at eval/tasks/$TASK_DIR_NAME/$FOCUS_NAME.txt, then read the current agent prompt at $AGENT_PROMPT_FILE.
 
 Make exactly ONE targeted mutation to $AGENT_PROMPT_FILE that you hypothesize will improve the agent's score on this task. Your mutation MUST be different from everything in the ALREADY TRIED list above.
@@ -126,6 +193,16 @@ Remember: ONLY edit the markdown body of the agent file, not the YAML frontmatte
     echo "{\"exp\":$EXPERIMENT,\"type\":\"no_mutation\",\"streak\":$NO_MUTATION_STREAK,\"ts\":\"$(date -Iseconds)\"}" >> "$LOG_FILE"
     continue
   fi
+
+  # Compute diff hash and check for repeats
+  DIFF_HASH=$(git diff config/agents/ | md5sum | cut -c1-16)
+  if grep -q "$DIFF_HASH" "$TRIED_FILE" 2>/dev/null; then
+    echo "  Duplicate mutation detected (hash: $DIFF_HASH) — skipping eval"
+    git checkout -- config/agents/
+    NO_MUTATION_STREAK=$((NO_MUTATION_STREAK + 1))
+    echo "{\"exp\":$EXPERIMENT,\"type\":\"duplicate\",\"hash\":\"$DIFF_HASH\",\"ts\":\"$(date -Iseconds)\"}" >> "$LOG_FILE"
+    continue
+  fi
   NO_MUTATION_STREAK=0  # Reset streak on successful mutation
 
   HYPOTHESIS=$(cat "$HYPOTHESIS_FILE" 2>/dev/null || echo "unknown")
@@ -135,7 +212,7 @@ Remember: ONLY edit the markdown body of the agent file, not the YAML frontmatte
   echo "  Hypothesis: $HYPOTHESIS"
 
   # Log this mutation attempt to tried-mutations (so future experiments avoid repeats)
-  echo "--- Exp $EXPERIMENT: $HYPOTHESIS | Diff: $DIFF_SUMMARY" >> "$TRIED_FILE"
+  echo "--- Exp $EXPERIMENT [hash:$DIFF_HASH]: $HYPOTHESIS | Diff: $DIFF_SUMMARY" >> "$TRIED_FILE"
 
   # 2. EVALUATE — Run eval suite
   echo "  [2/3] Running eval suite..."
