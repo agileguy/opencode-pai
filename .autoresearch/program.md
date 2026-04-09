@@ -49,7 +49,7 @@ Agent prompt files in `config/agents/`. Each file defines how a PAI agent behave
 
 ## Metric Definitions (so you know what to optimize for)
 
-There are 20 metrics across 3 categories (engineer has 20, boss has 6, architect has 10). Current weak areas are marked with ★.
+There are 25 metrics across 3 categories (engineer has 22, boss has 7, architect has 12). Current weak areas are marked with ★.
 
 ### EXECUTION metrics (do the basics work?):
 - `E1: impl file exists` — Did the agent create the implementation file?
@@ -69,6 +69,8 @@ There are 20 metrics across 3 categories (engineer has 20, boss has 6, architect
 - `Q7: test imports impl` — Test file imports the implementation
 - `Q8: tests exercise impl` — Tests call the actual function, not just assert constants ★ NEW
 - `Q9: no console.log` — No console.log/debug/info in implementation ★ NEW
+- `Q10: no duplicate code` — No copy-pasted implementation code in test file (detects impl-style declarations in tests) ★ NEW
+- `Q11: exports expected name` — Implementation exports the function/class name expected for the task (e.g. isPalindrome, debounce, Stack) ★ NEW
 
 ### SPEED metrics (is the agent efficient?):
 - `S1: used tools` — Agent used write/edit tools (not just text output)
@@ -84,6 +86,7 @@ There are 20 metrics across 3 categories (engineer has 20, boss has 6, architect
 - `D4: no self-impl` — Boss didn't write code directly
 - `D5: within limits` — Completed without hitting step limit
 - `D6: specific brief` — Delegation included file paths
+- `D7: verified output` — Boss read/verified the delegated output file after delegation completed ★ NEW
 
 ### pai-architect metrics (design doc quality):
 - `A1: design doc exists` — Did the agent produce a .md file?
@@ -96,6 +99,8 @@ There are 20 metrics across 3 categories (engineer has 20, boss has 6, architect
 - `A8: failure modes` — Considers risks, fallbacks, degradation scenarios
 - `A9: fast start` — Tool call in first 800 chars
 - `A10: concise output` — Total agent output under 50KB
+- `A11: quantitative estimates` — Design doc contains numeric estimates (latency ms, throughput, capacity, percentages) — needs 3+ ★ NEW
+- `A12: structured comparison` — Design doc contains markdown tables or structured comparisons (3+ table rows) ★ NEW
 
 ## Important
 
