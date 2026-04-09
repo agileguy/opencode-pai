@@ -38,6 +38,20 @@ Agent prompt files in `config/agents/`. Each file defines how a PAI agent behave
 - Adding metadata or categorization
 - Rewording without changing meaning
 
+## Mutation Strategies (Assigned Per Round)
+
+Each experiment round, you are assigned ONE mandatory strategy. Follow it.
+
+| Strategy | Description | When It Works Best |
+|----------|-------------|-------------------|
+| `remove_verbose` | Delete the longest or most wordy section/rule | Prompt is over 60 lines, has redundant phrasing |
+| `reorder_top3` | Move the 3 most important instructions to the very top | Key instructions buried after line 20 |
+| `add_example` | Add a concrete input→output example for the weakest task | Agent misunderstands expected format |
+| `shrink_prompt` | Remove at least 2 lines to reduce token count | Prompt exceeds 80 lines, local model degrading |
+| `change_sequencing` | Add "Do X BEFORE Y" constraint | Agent does steps in wrong order (e.g., impl before test) |
+| `explicit_tool_call` | Add "Use the write tool to create {file}" | Agent outputs text instead of creating files |
+| `remove_last_added` | Undo the most recent addition | Last mutation didn't help, try reverting it |
+
 ## Your Process
 
 1. Read the current agent prompt file
@@ -45,7 +59,29 @@ Agent prompt files in `config/agents/`. Each file defines how a PAI agent behave
 3. Identify which metrics are failing most often
 4. Form a hypothesis: "If I change X, metric Y should improve because Z"
 5. Make exactly ONE targeted edit to the prompt file
-6. Write your hypothesis to the hypothesis file specified in the prompt
+6. Your mutation MUST be unique — the loop checks a hash of your diff against all previous diffs. If you produce a duplicate mutation, it will be skipped automatically. Be creative and try genuinely different approaches.
+7. Write your hypothesis to the hypothesis file specified in the prompt
+
+## Reading Failure Analysis
+
+Each round, you receive a task-level score breakdown showing which tasks are WEAK and which metrics are failing. Use this to target your mutation:
+
+1. Find the WEAKEST task in the breakdown
+2. Read its FAILING METRICS
+3. Map the failing metrics to prompt changes (see Metric Definitions above)
+4. Apply your assigned strategy to fix the weakest task's failing metrics
+
+Example:
+```
+TASK SCORES:
+  01-palindrome: 0.95 (strong)
+  02-debounce: 0.70 (WEAK) — E1:pass E2:pass E3:fail Q4:fail S5:pass
+WEAKEST: 02-debounce (0.700)
+FAILING METRICS: E3:fail, Q4:fail
+Target your mutation at: 02-debounce
+```
+
+In this case: E3 (tests don't pass) and Q4 (insufficient edge cases). Your mutation should help the agent write passing tests with more edge cases for debounce-like tasks.
 
 ## Metric Definitions (so you know what to optimize for)
 
