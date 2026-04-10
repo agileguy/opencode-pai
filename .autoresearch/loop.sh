@@ -253,6 +253,25 @@ Remember: ONLY edit the markdown body of the agent file, not the YAML frontmatte
     continue
   fi
 
+  # Anti-overfit: Check prompt length — reject if > 100 lines (local models degrade)
+  AGENT_PROMPT_FILE="config/agents/${EVAL_AGENT}.md"
+  PROMPT_LINES=$(wc -l < "$AGENT_PROMPT_FILE" | tr -d ' ')
+  if [ "$PROMPT_LINES" -gt 100 ]; then
+    echo "  ⚠ Prompt too long ($PROMPT_LINES lines > 100 max) — reverting"
+    git checkout -- config/agents/
+    echo "{\"exp\":$EXPERIMENT,\"type\":\"too_long\",\"lines\":$PROMPT_LINES,\"ts\":\"$(date -Iseconds)\"}" >> "$LOG_FILE"
+    continue
+  fi
+
+  # Anti-overfit: Count task-specific hardcoded instructions
+  HARDCODED=$(grep -ciE "(write.*test\.ts FIRST|create.*\.ts FIRST|create.*\.ts SECOND|for csv|for debounce|for palindrome|for retry|for lru|for event.emitter|for validator|for linked)" "$AGENT_PROMPT_FILE" 2>/dev/null || echo 0)
+  if [ "$HARDCODED" -gt 3 ]; then
+    echo "  ⚠ Too many task-specific hardcoded instructions ($HARDCODED > 3) — reverting"
+    git checkout -- config/agents/
+    echo "{\"exp\":$EXPERIMENT,\"type\":\"overfit_hardcoded\",\"count\":$HARDCODED,\"ts\":\"$(date -Iseconds)\"}" >> "$LOG_FILE"
+    continue
+  fi
+
   # Compute diff hash and check for repeats
   DIFF_HASH=$(git diff config/agents/ | md5sum | cut -c1-16)
   if grep -q "$DIFF_HASH" "$TRIED_FILE" 2>/dev/null; then
@@ -284,11 +303,72 @@ Remember: ONLY edit the markdown body of the agent file, not the YAML frontmatte
 
   echo "  Score: $SCORE (baseline: $BASELINE_SCORE)"
 
+  # Anti-overfit: Check per-task regression
+  RESULTS_FILE=$(ls -td "$EVAL_DIR/results/"* 2>/dev/null | head -1)/results.jsonl
+  PREV_RESULTS_FILE=$(ls -td "$EVAL_DIR/results/"* 2>/dev/null | head -2 | tail -1)/results.jsonl
+
+  OVERFIT_REJECT=false
+  if [ -f "$RESULTS_FILE" ] && [ -f "$PREV_RESULTS_FILE" ]; then
+    OVERFIT_CHECK=$(python3 -c "
+import json, sys
+
+curr = {}
+prev = {}
+with open('$RESULTS_FILE') as f:
+    for line in f:
+        d = json.loads(line)
+        curr[d['task']] = d['score']
+with open('$PREV_RESULTS_FILE') as f:
+    for line in f:
+        d = json.loads(line)
+        prev[d['task']] = d['score']
+
+# Guard 1: No task can drop more than 0.3 from previous
+max_drop = 0
+worst_task = ''
+for task in curr:
+    if task in prev:
+        drop = prev[task] - curr[task]
+        if drop > max_drop:
+            max_drop = drop
+            worst_task = task
+
+# Guard 2: No task can be below 0.15 floor (essentially broken)
+floor_violations = [t for t, s in curr.items() if s < 0.15]
+
+# Guard 3: Count tasks that regressed vs improved
+regressed = sum(1 for t in curr if t in prev and curr[t] < prev[t] - 0.05)
+improved = sum(1 for t in curr if t in prev and curr[t] > prev[t] + 0.05)
+
+reject = False
+reason = ''
+if max_drop > 0.3:
+    reject = True
+    reason = f'task {worst_task} dropped {max_drop:.3f}'
+elif len(floor_violations) > 0:
+    reject = True
+    reason = f'tasks below floor: {floor_violations}'
+elif regressed > improved and regressed >= 3:
+    reject = True
+    reason = f'{regressed} tasks regressed vs {improved} improved (too broad)'
+
+print(f'{\"reject\" if reject else \"accept\"}|{reason}')
+" 2>/dev/null || echo "accept|check failed")
+
+    OVERFIT_VERDICT=$(echo "$OVERFIT_CHECK" | cut -d'|' -f1)
+    OVERFIT_REASON=$(echo "$OVERFIT_CHECK" | cut -d'|' -f2)
+
+    if [ "$OVERFIT_VERDICT" = "reject" ]; then
+      echo "  ⚠ OVERFIT GUARD: $OVERFIT_REASON"
+      OVERFIT_REJECT=true
+    fi
+  fi
+
   # 3. DECIDE — Keep or revert
   # Use >= so lateral moves (same score) are kept — they change strategy without regressing
   DOMINATED=$(awk "BEGIN {print ($SCORE < $BASELINE_SCORE) ? 1 : 0}")
 
-  if [ "$DOMINATED" = "0" ]; then
+  if [ "$DOMINATED" = "0" ] && [ "$OVERFIT_REJECT" = "false" ]; then
     if [ "$(awk "BEGIN {print ($SCORE > $BASELINE_SCORE) ? 1 : 0}")" = "1" ]; then
       echo "  [3/3] ✓ IMPROVED — committing"
       COMMIT_TYPE="improvement"
@@ -296,6 +376,33 @@ Remember: ONLY edit the markdown body of the agent file, not the YAML frontmatte
       echo "  [3/3] ≈ LATERAL — committing (same score, new strategy)"
       COMMIT_TYPE="lateral"
     fi
+    # For lateral moves: only accept if minimum task score improved
+    if [ "$COMMIT_TYPE" = "lateral" ]; then
+      MIN_IMPROVED=$(python3 -c "
+import json
+curr = {}
+prev = {}
+with open('$RESULTS_FILE') as f:
+    for line in f:
+        d = json.loads(line)
+        curr[d['task']] = d['score']
+with open('$PREV_RESULTS_FILE') as f:
+    for line in f:
+        d = json.loads(line)
+        prev[d['task']] = d['score']
+curr_min = min(curr.values()) if curr else 0
+prev_min = min(prev.values()) if prev else 0
+print('yes' if curr_min > prev_min else 'no')
+" 2>/dev/null || echo "yes")
+      if [ "$MIN_IMPROVED" = "no" ]; then
+        echo "  [3/3] ≈ LATERAL rejected — min task score didn't improve"
+        git checkout -- config/agents/
+        echo "{\"exp\":$EXPERIMENT,\"type\":\"lateral_reject\",\"score\":$SCORE,\"baseline\":$BASELINE_SCORE,\"ts\":\"$(date -Iseconds)\"}" >> "$LOG_FILE"
+        PLATEAU_COUNTER=$((PLATEAU_COUNTER + 1))
+        continue
+      fi
+    fi
+
     git add config/agents/
     git add .autoresearch/hypothesis-${EVAL_AGENT}.txt 2>/dev/null || true
     git commit -m "autoresearch: exp $EXPERIMENT score $BASELINE_SCORE→$SCORE
@@ -311,6 +418,11 @@ Hypothesis: $HYPOTHESIS"
     fi
 
     echo "{\"exp\":$EXPERIMENT,\"type\":\"$COMMIT_TYPE\",\"score\":$SCORE,\"prev\":$BASELINE_SCORE,\"hypothesis\":\"$HYPOTHESIS\",\"ts\":\"$(date -Iseconds)\"}" >> "$LOG_FILE"
+  elif [ "$OVERFIT_REJECT" = "true" ]; then
+    echo "  [3/3] ⚠ OVERFIT — reverting (aggregate improved but per-task regression detected)"
+    git checkout -- config/agents/
+    echo "{\"exp\":$EXPERIMENT,\"type\":\"overfit_reject\",\"score\":$SCORE,\"baseline\":$BASELINE_SCORE,\"reason\":\"$OVERFIT_REASON\",\"ts\":\"$(date -Iseconds)\"}" >> "$LOG_FILE"
+    PLATEAU_COUNTER=$((PLATEAU_COUNTER + 1))
   else
     echo "  [3/3] ✗ Regressed — reverting"
     git checkout -- config/agents/
