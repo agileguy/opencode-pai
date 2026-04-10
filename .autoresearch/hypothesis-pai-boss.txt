@@ -1,0 +1,1 @@
+If I remove the verbose Rule 7 about TDD/Tests verification, the boss will be less cluttered and focus on the core verification step (Rule 3 reads output files). The TDD requirement is implicit in code tasks — engineer handles tests. This targets 03-config-parser which is performing at 1.0000 baseline but redundant rules may be confusing the agent.
