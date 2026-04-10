@@ -66,6 +66,48 @@ make test          # All tests
 
 Structural tests validate agent definitions, skill loading, and plugin hooks. E2E tests verify model connectivity and routing.
 
+## Eval Suite
+
+Eval tasks test each agent type against specific criteria. Run baselines to measure current agent performance:
+
+```bash
+make eval-engineer    # 15 tasks: palindrome, debounce, csv2json, stack, LRU cache, rate limiter, etc.
+make eval-boss        # 7 tasks: email-validator, slug-generator, multi-file refactor, design+implement, etc.
+make eval-architect   # 7 tasks: cache strategy, auth spec, API versioning, data migration, etc.
+make eval-all         # Run all three sequentially
+```
+
+Each eval task runs the agent via `opencode run`, then scores the output against weighted metrics:
+
+| Agent | Metrics | Categories |
+|-------|---------|------------|
+| pai-engineer | 28 | Execution (file/test existence, tests pass), Quality (types, imports, naming, edge cases), Speed (TDD order, conciseness) |
+| pai-boss | 13 | Delegation (routing, output exists, delegated tests pass, constraints in brief, no self-implementation) |
+| pai-architect | 18 | Design (structure, trade-offs, pros/cons, recommendation, quantitative estimates, migration plan, security) |
+
+Eval tasks live in `eval/tasks/{engineer,boss,architect}/`. Scoring logic is in `eval/check-metrics.sh`.
+
+## Autoresearch
+
+Automated prompt optimization using Karpathy's autoresearch pattern. Mutates agent prompts, evaluates against the eval suite, and keeps improvements while reverting regressions.
+
+```bash
+make research-engineer    # Launch engineer prompt optimization (background)
+make research-boss        # Launch boss prompt optimization (background)
+make research-architect   # Launch architect prompt optimization (background)
+make research-all         # Launch all three in parallel
+
+make research-status      # Dashboard: checkpoints, baselines, latest logs, process count
+make research-stop        # Create stop files — loops halt after current experiment
+```
+
+Each run executes up to 50 experiments. Per experiment:
+1. **Mutate** — An LLM modifies the agent prompt using a rotating strategy (remove verbose, reorder, add example, shrink, change sequencing, explicit tool calls)
+2. **Evaluate** — Full eval suite runs against the mutated prompt
+3. **Keep or revert** — If score improves, keep the mutation and update baseline; otherwise revert
+
+Autoresearch state is in `.autoresearch/` — baselines, checkpoints, logs, mutation history. The loop supports adaptive early stopping after 10 consecutive non-improvements.
+
 ## ACP Integration
 
 Connect PAI agents to Zed, JetBrains, or Neovim via the Agent Client Protocol. See [config/acp/README.md](config/acp/README.md).
@@ -91,6 +133,13 @@ Assign different models to different agents — run 100% local for free, or sele
 | `make test` | Run full test suite |
 | `make test-e2e` | Run end-to-end tests |
 | `make logs` | Tail container logs |
+| `make eval-engineer` | Run engineer eval (15 tasks) |
+| `make eval-boss` | Run boss eval (7 tasks) |
+| `make eval-architect` | Run architect eval (7 tasks) |
+| `make eval-all` | Run all evals sequentially |
+| `make research-all` | Launch all autoresearch in parallel |
+| `make research-stop` | Stop all autoresearch loops |
+| `make research-status` | Show autoresearch dashboard |
 
 ## Directory Structure
 
@@ -108,6 +157,20 @@ opencode-pai/
     server/           # Headless server mode docs
     skills/           # 10 priority skills
     AGENTS.md         # PAI behavioral rules
+  eval/
+    check-metrics.sh  # Scoring engine (28/13/18 metrics per agent)
+    run-eval.sh       # Eval runner (per-agent or all)
+    tasks/
+      engineer/       # 15 eval tasks (palindrome → dependency-graph)
+      boss/           # 7 eval tasks (email-validator → design-and-implement)
+      architect/      # 7 eval tasks (cache-strategy → data-migration)
+    fixtures/         # Test fixtures for boss eval tasks
+  .autoresearch/
+    loop.sh           # Main autoresearch loop
+    program.md        # Mutator instructions
+    baseline-*.txt    # Current baselines per agent
+    checkpoint-*.json # Resume state per agent
+    output-*.log      # Run logs
   docs/
     cost-routing.md   # Multi-model cost routing guide
   tests/              # Test harness (structural + e2e)
