@@ -40,11 +40,12 @@ CHECKPOINT_FILE="$AR_DIR/checkpoint-${EVAL_AGENT}.json"
 STRATEGIES=(
   "remove_verbose"
   "reorder_top3"
-  "add_example"
+  "generalize"
   "shrink_prompt"
   "change_sequencing"
   "explicit_tool_call"
   "remove_last_added"
+  "generalize"
 )
 STRATEGY_INDEX=0
 
@@ -225,8 +226,10 @@ Your MANDATORY strategy for this round is: $CURRENT_STRATEGY
 - change_sequencing: Add a "Do X BEFORE Y" constraint based on failure patterns
 - explicit_tool_call: Add explicit "Use the write tool to create {filename}" instruction
 - remove_last_added: Undo/revert the most recent addition that wasn't reverted by the loop
+- generalize: Replace a task-specific hardcoded instruction with a generic pattern (e.g., 'create debounce.test.ts' → 'create {task-name}.test.ts')
 
 You MUST follow the assigned strategy. Do not default to "add a rule."
+ANTI-OVERFIT: The loop rejects mutations that cause per-task regression >0.3, push any task below 0.15, or add >3 task-specific instructions. Prefer GENERIC improvements.
 
 Task-level failure analysis from last eval:
 $FAILURE_ANALYSIS
