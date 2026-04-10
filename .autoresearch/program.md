@@ -21,6 +21,32 @@ Agent prompt files in `config/agents/`. Each file defines how a PAI agent behave
 5. **Never add Algorithm/ISC/PRD references** — local models can't handle that complexity
 6. **Preserve tool call guidance** — the agent must know to use write/edit tools, not just output text
 
+## Anti-Overfitting Rules (CRITICAL)
+
+The loop now has hard guards that will REJECT your mutation if it causes overfitting. Understand these rules to avoid wasted experiments:
+
+### Guard 1: Per-Task Regression Limit
+If ANY task drops more than 0.3 from its previous score, the mutation is rejected even if the aggregate improved. Do NOT sacrifice one task to boost another.
+
+### Guard 2: Minimum Floor (0.15)
+No task can drop below 0.15 score. If your mutation breaks a task completely (empty output, wrong files), it will be rejected.
+
+### Guard 3: Broad Regression
+If 3+ tasks regress (even slightly) while only 1-2 improve, the mutation is rejected. Mutations must help broadly, not narrowly.
+
+### Guard 4: Prompt Length Cap (100 lines)
+The prompt must stay under 100 lines. Local models degrade with long prompts. If your mutation pushes past 100 lines, it will be rejected automatically.
+
+### Guard 5: Task-Specific Hardcoding Cap (max 3)
+No more than 3 task-specific hardcoded instructions (e.g., "Use write tool to create X.test.ts FIRST"). If the prompt already has 3, you must REMOVE one before adding another.
+
+### What This Means for Your Strategy
+- **Prefer GENERIC improvements** over task-specific fixes
+- **"Do X BEFORE Y" is OK** if it applies to ALL tasks (e.g., "write tests before implementation")
+- **Task-specific file names are BAD** (e.g., "create debounce.test.ts") — they help one task, hurt the rest
+- **Shrinking the prompt is almost always safe** — shorter prompts generalize better on local models
+- **Adding examples is risky** — they anchor the model on one pattern, potentially breaking others
+
 ## What Makes Good Mutations
 
 **High-value changes:**
@@ -31,12 +57,17 @@ Agent prompt files in `config/agents/`. Each file defines how a PAI agent behave
 - Changing phrasing from abstract to concrete
 - Adding "Do X BEFORE Y" sequencing constraints
 - Shrinking the prompt (fewer tokens = more room for the task)
+- Replacing task-specific instructions with generic equivalents ("create {task-name}.test.ts FIRST" instead of "create debounce.test.ts FIRST")
+- Removing instructions that only help one task but are neutral/harmful to others
 
 **Low-value changes (avoid):**
 - Adding more rules (local models ignore long rule lists)
 - Making instructions more abstract or philosophical
 - Adding metadata or categorization
 - Rewording without changing meaning
+- Adding task-specific file names ("create debounce.test.ts FIRST") — helps one task, breaks others
+- Making the prompt longer (each line costs context budget that ALL tasks need)
+- Adding examples of specific task solutions (model may copy the example pattern for different tasks)
 
 ## Mutation Strategies (Assigned Per Round)
 
@@ -51,13 +82,25 @@ Each experiment round, you are assigned ONE mandatory strategy. Follow it.
 | `change_sequencing` | Add "Do X BEFORE Y" constraint | Agent does steps in wrong order (e.g., impl before test) |
 | `explicit_tool_call` | Add "Use the write tool to create {file}" | Agent outputs text instead of creating files |
 | `remove_last_added` | Undo the most recent addition | Last mutation didn't help, try reverting it |
+| `generalize` | Replace a task-specific instruction with a generic pattern | Prompt has hardcoded file names or task-specific examples |
+
+### Strategy Descriptions
+- remove_verbose: Delete the longest or most wordy section/rule
+- reorder_top3: Move the 3 most important instructions to the very top of the prompt
+- add_example: Add a concrete input→output example relevant to the focus task
+- shrink_prompt: Remove at least 2 lines to make the prompt shorter
+- change_sequencing: Add a "Do X BEFORE Y" constraint based on failure patterns
+- explicit_tool_call: Add explicit "Use the write tool to create {filename}" instruction
+- remove_last_added: Undo/revert the most recent addition that wasn't reverted by the loop
+- generalize: Replace a task-specific hardcoded instruction (e.g., "create debounce.test.ts") with a generic pattern (e.g., "create {task-name}.test.ts"). The goal is to help ALL tasks equally rather than one specific task.
 
 ## Your Process
 
 1. Read the current agent prompt file
 2. Read the last 5 experiment results from `.autoresearch/log.jsonl`
 3. Identify which metrics are failing most often
-4. Form a hypothesis: "If I change X, metric Y should improve because Z"
+4. Form a hypothesis: "If I change X, metric Y should improve on task Z WITHOUT regressing other tasks because [reason]"
+4b. Check: Does the prompt already have >3 task-specific instructions? If yes, your mutation MUST be either `remove_verbose`, `shrink_prompt`, `generalize`, or `remove_last_added`.
 5. Make exactly ONE targeted edit to the prompt file
 6. Your mutation MUST be unique — the loop checks a hash of your diff against all previous diffs. If you produce a duplicate mutation, it will be skipped automatically. Be creative and try genuinely different approaches.
 7. Write your hypothesis to the hypothesis file specified in the prompt
