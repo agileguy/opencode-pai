@@ -1,0 +1,1 @@
+There is a failing test at /workspace/eval/fixtures/buggy-calculator.test.ts that tests a Calculator class at /workspace/eval/fixtures/buggy-calculator.ts. The test expects `calculator.divide(10, 3)` to return `3.333` (rounded to 3 decimals) but the implementation has a bug. Investigate the root cause and fix it. Delegate the investigation and fix to the appropriate PAI agent.
