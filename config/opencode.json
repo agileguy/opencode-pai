@@ -137,6 +137,23 @@
           }
         }
       }
+    },
+    "ollama-cloud": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Ollama Cloud (Qwen 397B)",
+      "options": {
+        "baseURL": "https://ollama.com/v1",
+        "apiKey": "{env:OLLAMA_API_KEY}"
+      },
+      "models": {
+        "qwen3.5:397b": {
+          "name": "Qwen 3.5 397B (Ollama Cloud)",
+          "limit": {
+            "context": 131072,
+            "output": 8192
+          }
+        }
+      }
     }
   },
   "permission": {
